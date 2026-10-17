@@ -573,6 +573,19 @@
   /* 3D view on / off (top of the eye menu) */
   #btn-tilt { display: flex; align-items: center; justify-content: center; width: 100%; margin: 10px 0 2px; font-weight: 600; }
   #btn-tilt.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  /* Roads / Imagery switches (eye menu) */
+  .layer-toggles { display: flex; gap: 8px; margin: 8px 0 2px; }
+  .layer-toggles .btn { flex: 1; display: flex; align-items: center; justify-content: center; font-weight: 600; }
+  .layer-toggles .btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  #imagery-opts .opt-label { margin-top: 8px; }
+  /* data credits for the roads / imagery shown (small, bottom corner, never in the way) */
+  #attrib {
+    position: absolute; z-index: 5; pointer-events: none;
+    left: calc(var(--side-l, 8px) + var(--sal, 0px)); bottom: calc(var(--tabbar-h, 0px) + 4px);
+    max-width: 60%; padding: 1px 6px; border-radius: 4px;
+    font-size: 10px; color: var(--text-dim); background: var(--btn-bg);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
   /* second tap: map locked on you (arrow filled in) */
   #btn-locate.follow svg path { fill-opacity: 1; }
   #loc-dot {
@@ -1067,6 +1080,7 @@
   </div>
   <button id="share-pill" hidden></button>
   <div id="toast" hidden></div>
+  <div id="attrib" hidden></div>
   <div id="status"></div>
   <div id="settings-card" class="corner-card" hidden>
     <div class="seg" id="view-toggle">
@@ -1075,6 +1089,16 @@
     </div>
     <button class="btn" id="btn-tilt" title="Tilt the map into a 3D view">
       <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 17.5l5-9h9l5 9z"/><path d="M6 13l3-2.5 3 2 3-3 3.5 3.5"/></svg>3D view</button>
+    <div class="layer-toggles">
+      <button class="btn" id="btn-roads" title="Roads, field approaches and trails (NRCan CanVec)">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3.5L5 20.5M16 3.5l3 17"/><path d="M12 4v3M12 10.5v3M12 17v3"/></svg>Roads</button>
+      <button class="btn" id="btn-imagery" title="Aerial photo (Saskatchewan, SGIC)">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="M3.5 17l5-5 4 4 3-3 5 5"/><circle cx="16" cy="9" r="1.6"/></svg>Imagery</button>
+    </div>
+    <div id="imagery-opts" hidden>
+      <div class="opt-label"><span>Imagery strength</span><span id="imagery-val">100%</span></div>
+      <input type="range" id="imagery-alpha" min="10" max="100" value="100">
+    </div>
 
     <div class="section">
       <div class="row">
@@ -2677,12 +2701,25 @@ async function parseTiff(file) {
   } else if (xform && xform.length >= 16 && xform[1] === 0 && xform[4] === 0 && xform[0] > 0) {
     georef = { sx: xform[0], sy: Math.abs(xform[5]), ox: xform[3], oy: xform[7] };
   }
-  let epsg = null, crsName = '';
+  let epsg = null, crsName = '', tm = null;
   const keys = await values(34735);
   if (keys && keys.length >= 4) {
+    const doubles = await values(34736);
+    const key = new Map();   // GeoKey id -> value (inline short, or from the double params)
     for (let k = 0; k < keys[3]; k++) {
-      const id = keys[4 + k * 4], loc = keys[5 + k * 4], val = keys[7 + k * 4];
-      if ((id === 3072 || (id === 2048 && epsg == null)) && loc === 0 && val > 0 && val < 32767) epsg = val;
+      const id = keys[4 + k * 4], loc = keys[5 + k * 4], idx = keys[7 + k * 4];
+      if (loc === 0) key.set(id, idx);
+      else if (loc === 34736 && doubles) key.set(id, doubles[idx]);
+    }
+    const pcs = key.get(3072);
+    if (pcs > 0 && pcs < 32767) epsg = pcs;
+    else if (pcs == null && key.get(2048) > 0 && key.get(2048) < 32767) epsg = key.get(2048);
+    // a user-defined transverse Mercator (ProjCoordTrans 1): its parameters are in the file
+    if (pcs === 32767 && key.get(3075) === 1) {
+      tm = {
+        lon0: key.get(3080) ?? key.get(3088) ?? 0, lat0: key.get(3081) ?? key.get(3089) ?? 0,
+        k0: key.get(3092) ?? 1, fe: key.get(3082) ?? 0, fn: key.get(3083) ?? 0,
+      };
     }
   }
   const ascii = await values(34737);
@@ -2693,7 +2730,7 @@ async function parseTiff(file) {
   return {
     file, name: file.name, le, width, height, bps, fmt, comp, pred, tiled, tileW, tileH, rps,
     offsets, counts, nodata: nodata == null || isNaN(nodata) ? -1e30 : nodata,
-    georef, epsg, crsName,
+    georef, epsg, crsName, tm,
   };
 }
 
@@ -2704,7 +2741,7 @@ function computeMosaic(infos) {
     return {
       W: t.width, H: t.height, px: g.sx, py: g.sy, ox: g.ox, oy: g.oy,
       place: [{ col: 0, row: 0 }], overlap: false, noGeoref: !t.georef,
-      epsg: t.epsg, crsName: t.crsName,
+      epsg: t.epsg, crsName: t.crsName, tm: t.tm,
     };
   }
   for (const t of infos) {
@@ -2742,7 +2779,7 @@ function computeMosaic(infos) {
           A.row < B.row + infos[j].height && B.row < A.row + infos[i].height) overlap = true;
     }
   }
-  return { W, H, px: sx, py: sy, ox, oy, place, overlap, noGeoref: false, epsg: a.epsg, crsName: a.crsName };
+  return { W, H, px: sx, py: sy, ox, oy, place, overlap, noGeoref: false, epsg: a.epsg, crsName: a.crsName, tm: a.tm };
 }
 
 // ===========================================================================
@@ -3053,7 +3090,8 @@ async function loadFiles(fileList, { remember = true, emptyMsg = '' } = {}) {
 // WebGL renderer
 // ===========================================================================
 const canvas = $('gl');
-let gl = null, prog = null, uni = {}, vao = null, lutTex = null;
+let gl = null, prog = null, uni = {}, vao = null, lutTex = null, blankTex = null;
+const layerTex = { roads: null, imagery: null };   // roads / imagery textures for the open map: { tex, key, w, h }
 let waterProg = null, waterUni = {};
 let slopeProg = null, slopeUni = {};
 let landformProg = null, landformUni = {};
@@ -3115,6 +3153,12 @@ uniform float u_calpha;
 uniform vec3 u_ccolor;
 uniform float u_mPerDev;    // ground metres per device pixel
 uniform float u_dpr;
+uniform float u_f;          // map px per texel at this level
+uniform vec2 u_mapSize;     // map size, px (layer textures cover the whole map)
+uniform sampler2D u_img;    // imagery layer
+uniform float u_imgAlpha;   // 0 = off
+uniform sampler2D u_road;   // roads layer (transparent away from roads)
+uniform float u_roadOn;     // 0 = off
 in vec2 v_p;
 out vec4 o;
 
@@ -3159,6 +3203,8 @@ void main() {
     vec3 col = texelFetch(u_lut, ivec2(int(t * 255.0), 0), 0).rgb;
     rgb = clamp(col * (1.0 + u_relief * (sh - 0.5) * 1.6), 0.0, 1.0);
   }
+  vec2 uvMap = v_p * u_f / u_mapSize;
+  if (u_imgAlpha > 0.0) rgb = mix(rgb, texture(u_img, uvMap).rgb, u_imgAlpha);   // imagery under the contours
 
   if (u_contours == 1) {
     // Contours trace a lightly smoothed surface: a cubic B-spline over the
@@ -3196,6 +3242,7 @@ void main() {
     a *= smoothstep(2.5 * u_dpr, 6.0 * u_dpr, spacingPx);
     rgb = mix(rgb, u_ccolor, a * u_calpha);
   }
+  if (u_roadOn > 0.0) { vec4 rd = texture(u_road, uvMap); rgb = mix(rgb, rd.rgb, rd.a); }   // roads on top
   o = vec4(rgb, 1.0);
 }`;
 
@@ -3381,6 +3428,10 @@ function initGl() {
   slopeProg3d = link(VS3D, FS_SLOPE, slopeUni3d);
   landformProg3d = link(VS3D, FS_LANDFORM, landformUni3d);
   vao = gl.createVertexArray();
+  blankTex = gl.createTexture();   // 1 transparent pixel: stands in for a layer that isn't loaded
+  gl.bindTexture(gl.TEXTURE_2D, blankTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+  layerTex.roads = layerTex.imagery = null;   // a new context: layer textures are fetched again
   lutTex = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, lutTex);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -3553,6 +3604,7 @@ function teardownMap() {
     for (const L of levels) for (const c of L.chunks) gl.deleteTexture(c.tex);
   }
   if (locWatch !== null) setLocating(false);
+  dropLayers();
   levels = null;
   setWater(null);
   setSlope(null);
@@ -3597,6 +3649,18 @@ function useTerrainProgram(P, U, L, dpr, mPerDev) {
   gl.uniform3fv(U.u_ccolor, contourColor());
   gl.uniform1f(U.u_mPerDev, mPerDev);
   gl.uniform1f(U.u_dpr, dpr);
+  // roads / imagery layers (a blank texture stands in for one not loaded)
+  const img = settings.imagery && layerTex.imagery, road = settings.roads && layerTex.roads;
+  gl.uniform2f(U.u_mapSize, map.W, map.H);
+  gl.uniform1i(U.u_img, 4);    // units 4 and 5 (the 3D view uses 2 for its heights)
+  gl.uniform1i(U.u_road, 5);
+  gl.activeTexture(gl.TEXTURE4);
+  gl.bindTexture(gl.TEXTURE_2D, img ? img.tex : blankTex);
+  gl.activeTexture(gl.TEXTURE5);
+  gl.bindTexture(gl.TEXTURE_2D, road ? road.tex : blankTex);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.uniform1f(U.u_imgAlpha, img ? settings.imageryAlpha : 0);
+  gl.uniform1f(U.u_roadOn, road ? 1 : 0);
 }
 
 // ---- 3D (tilted) view ----
@@ -4076,9 +4140,12 @@ function viewBounds(vw, vh) {
 // the map looks slightly rotated. Returns the convergence (radians, positive
 // when grid north is east of true north) at the map centre, or 0 if the
 // projection isn't recognised.
-// The map's projection: { utm: zone, south } or { lambert: true }, or null if unknown.
+// The map's projection: { tm: {lon0, lat0, k0, fe, fn} } (UTM, or a custom
+// transverse Mercator such as the true-north squares from Download my location)
+// or { lambert: true }, or null if unknown.
 function mapProjection(m) {
   if (!m || m.noGeoref) return null;
+  if (m.tm) return { tm: m.tm };
   const name = String(m.crsName || ''), epsg = m.epsg || 0;
   // UTM zone, from the projection's name or its EPSG code
   let zone = 0, south = false;
@@ -4092,29 +4159,52 @@ function mapProjection(m) {
   else if (epsg >= 3154 && epsg <= 3157) zone = epsg - 3147;                    // NAD83(CSRS) 7-10N
   else if (epsg >= 3158 && epsg <= 3160) zone = epsg - 3144;                    // NAD83(CSRS) 14-16N
   else if (epsg >= 22207 && epsg <= 22999 && epsg % 100 >= 7 && epsg % 100 <= 22) zone = epsg % 100;  // NAD83(CSRS)vN
-  if (zone >= 1 && zone <= 60) return { utm: zone, south };
+  if (zone >= 1 && zone <= 60) return { tm: { lon0: zone * 6 - 183, lat0: 0, k0: 0.9996, fe: 500000, fn: south ? 10000000 : 0 } };
   if (epsg === 3978 || epsg === 3979 || /canada atlas lambert/i.test(name)) return { lambert: true };
   return null;
+}
+
+// Transverse Mercator on the GRS80 ellipsoid (Snyder's series; sub-millimetre
+// within a UTM zone). tm: { lon0, lat0 (degrees), k0, fe, fn (metres) }.
+const GRS80 = (() => { const a = 6378137, f = 1 / 298.257222101, e2 = f * (2 - f); return { a, e2, ep2: e2 / (1 - e2) }; })();
+function tmMeridian(phi) {   // distance along the meridian from the equator to latitude phi (radians)
+  const { a, e2 } = GRS80;
+  return a * ((1 - e2 / 4 - 3 * e2 ** 2 / 64 - 5 * e2 ** 3 / 256) * phi
+    - (3 * e2 / 8 + 3 * e2 ** 2 / 32 + 45 * e2 ** 3 / 1024) * Math.sin(2 * phi)
+    + (15 * e2 ** 2 / 256 + 45 * e2 ** 3 / 1024) * Math.sin(4 * phi)
+    - (35 * e2 ** 3 / 3072) * Math.sin(6 * phi));
+}
+function tmForward(lat, lon, tm) {
+  const { a, e2, ep2 } = GRS80, rad = Math.PI / 180, phi = lat * rad, k0 = tm.k0;
+  const sp = Math.sin(phi), cp = Math.cos(phi), tp = Math.tan(phi);
+  const Nr = a / Math.sqrt(1 - e2 * sp * sp), T = tp * tp, C = ep2 * cp * cp, A = (lon - tm.lon0) * rad * cp;
+  const E = tm.fe + k0 * Nr * (A + (1 - T + C) * A ** 3 / 6 + (5 - 18 * T + T * T + 72 * C - 58 * ep2) * A ** 5 / 120);
+  const N = tm.fn + k0 * (tmMeridian(phi) - tmMeridian((tm.lat0 || 0) * rad)
+    + Nr * tp * (A * A / 2 + (5 - T + 9 * C + 4 * C * C) * A ** 4 / 24 + (61 - 58 * T + T * T + 600 * C - 330 * ep2) * A ** 6 / 720));
+  return { E, N };
+}
+function tmInverse(E, N, tm) {
+  const { a, e2, ep2 } = GRS80, deg = 180 / Math.PI, k0 = tm.k0;
+  const xx = E - tm.fe, M = tmMeridian((tm.lat0 || 0) / deg) + (N - tm.fn) / k0;
+  const mu = M / (a * (1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * e2 ** 3 / 256));
+  const e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
+  const p1 = mu + (3 * e1 / 2 - 27 * e1 ** 3 / 32) * Math.sin(2 * mu) + (21 * e1 * e1 / 16 - 55 * e1 ** 4 / 32) * Math.sin(4 * mu)
+    + (151 * e1 ** 3 / 96) * Math.sin(6 * mu) + (1097 * e1 ** 4 / 512) * Math.sin(8 * mu);
+  const sp = Math.sin(p1), cp = Math.cos(p1), T = Math.tan(p1) ** 2, C = ep2 * cp * cp;
+  const Nn = a / Math.sqrt(1 - e2 * sp * sp), R = a * (1 - e2) / Math.pow(1 - e2 * sp * sp, 1.5), D = xx / (Nn * k0);
+  const lat = p1 - (Nn * Math.tan(p1) / R) * (D * D / 2 - (5 + 3 * T + 10 * C - 4 * C * C - 9 * ep2) * D ** 4 / 24
+    + (61 + 90 * T + 298 * C + 45 * T * T - 252 * ep2 - 3 * C * C) * D ** 6 / 720);
+  const dLon = (D - (1 + 2 * T + C) * D ** 3 / 6 + (5 - 2 * C + 28 * T - 3 * C * C + 8 * ep2 + 24 * T * T) * D ** 5 / 120) / cp;
+  return { lat: lat * deg, lon: tm.lon0 + dLon * deg };
 }
 
 function gridConvergence(m) {
   const pr = mapProjection(m);
   if (!pr) return 0;
   const E = m.ox + m.W * m.px / 2, N = m.oy - m.H * m.py / 2;   // map centre
-  const epsg = m.epsg || 0, south = !!pr.south;
-  if (pr.utm) {
-    // inverse transverse Mercator (GRS80) for latitude and longitude offset
-    const a = 6378137, f = 1 / 298.257222101, e2 = f * (2 - f), ep2 = e2 / (1 - e2), k0 = 0.9996;
-    const x = E - 500000, y = south ? N - 10000000 : N;
-    const mu = y / k0 / (a * (1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * e2 * e2 * e2 / 256));
-    const e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
-    const p1 = mu + (3 * e1 / 2 - 27 * e1 ** 3 / 32) * Math.sin(2 * mu) + (21 * e1 * e1 / 16 - 55 * e1 ** 4 / 32) * Math.sin(4 * mu)
-      + (151 * e1 ** 3 / 96) * Math.sin(6 * mu);
-    const sp = Math.sin(p1), cp = Math.cos(p1), T = Math.tan(p1) ** 2, C = ep2 * cp * cp;
-    const Nn = a / Math.sqrt(1 - e2 * sp * sp), R = a * (1 - e2) / Math.pow(1 - e2 * sp * sp, 1.5), D = x / (Nn * k0);
-    const lat = p1 - (Nn * Math.tan(p1) / R) * (D * D / 2 - (5 + 3 * T + 10 * C - 4 * C * C - 9 * ep2) * D ** 4 / 24);
-    const dLon = (D - (1 + 2 * T + C) * D ** 3 / 6 + (5 - 2 * C + 28 * T - 3 * C * C + 8 * ep2 + 24 * T * T) * D ** 5 / 120) / cp;
-    return Math.atan(Math.tan(dLon) * Math.sin(lat));
+  if (pr.tm) {
+    const p = tmInverse(E, N, pr.tm), rad = Math.PI / 180;
+    return Math.atan(Math.tan((p.lon - pr.tm.lon0) * rad) * Math.sin(p.lat * rad));
   }
   // Canada Atlas Lambert (EPSG 3978 / 3979): central meridian 95°W, parallels 49°N and 77°N
   if (pr.lambert) {
@@ -4132,23 +4222,7 @@ function gridConvergence(m) {
 function lonLatToMap(lat, lon, m) {
   const pr = mapProjection(m);
   if (!pr) return null;
-  const rad = Math.PI / 180, a = 6378137, f = 1 / 298.257222101, e2 = f * (2 - f), e = Math.sqrt(e2);
-  const phi = lat * rad;
-  let E, N;
-  if (pr.utm) {
-    const k0 = 0.9996, ep2 = e2 / (1 - e2), lon0 = (pr.utm * 6 - 183) * rad;
-    const sp = Math.sin(phi), cp = Math.cos(phi), tp = Math.tan(phi);
-    const Nr = a / Math.sqrt(1 - e2 * sp * sp), T = tp * tp, C = ep2 * cp * cp, A = (lon * rad - lon0) * cp;
-    const M = a * ((1 - e2 / 4 - 3 * e2 ** 2 / 64 - 5 * e2 ** 3 / 256) * phi
-      - (3 * e2 / 8 + 3 * e2 ** 2 / 32 + 45 * e2 ** 3 / 1024) * Math.sin(2 * phi)
-      + (15 * e2 ** 2 / 256 + 45 * e2 ** 3 / 1024) * Math.sin(4 * phi)
-      - (35 * e2 ** 3 / 3072) * Math.sin(6 * phi));
-    E = 500000 + k0 * Nr * (A + (1 - T + C) * A ** 3 / 6 + (5 - 18 * T + T * T + 72 * C - 58 * ep2) * A ** 5 / 120);
-    N = k0 * (M + Nr * tp * (A * A / 2 + (5 - T + 9 * C + 4 * C * C) * A ** 4 / 24 + (61 - 58 * T + T * T + 600 * C - 330 * ep2) * A ** 6 / 720));
-    if (pr.south) N += 10000000;
-  } else {
-    ({ E, N } = lambertEN(lat, lon));
-  }
+  const { E, N } = pr.tm ? tmForward(lat, lon, pr.tm) : lambertEN(lat, lon);
   return { x: (E - m.ox) / m.px, y: (m.oy - N) / m.py };
 }
 // Latitude / longitude -> Canada Atlas Lambert (EPSG 3979) easting / northing, metres.
@@ -4171,24 +4245,12 @@ function mapToLonLat(x, y, m) {
   const pr = mapProjection(m);
   if (!pr) return null;
   const E = m.ox + x * m.px, N = m.oy - y * m.py;
-  const deg = 180 / Math.PI, a = 6378137, f = 1 / 298.257222101, e2 = f * (2 - f), e = Math.sqrt(e2);
-  if (pr.utm) {
-    // inverse transverse Mercator (Snyder)
-    const ep2 = e2 / (1 - e2), k0 = 0.9996;
-    const xx = E - 500000, yy = pr.south ? N - 10000000 : N;
-    const mu = yy / k0 / (a * (1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * e2 ** 3 / 256));
-    const e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
-    const p1 = mu + (3 * e1 / 2 - 27 * e1 ** 3 / 32) * Math.sin(2 * mu) + (21 * e1 * e1 / 16 - 55 * e1 ** 4 / 32) * Math.sin(4 * mu)
-      + (151 * e1 ** 3 / 96) * Math.sin(6 * mu) + (1097 * e1 ** 4 / 512) * Math.sin(8 * mu);
-    const sp = Math.sin(p1), cp = Math.cos(p1), T = Math.tan(p1) ** 2, C = ep2 * cp * cp;
-    const Nn = a / Math.sqrt(1 - e2 * sp * sp), R = a * (1 - e2) / Math.pow(1 - e2 * sp * sp, 1.5), D = xx / (Nn * k0);
-    const lat = p1 - (Nn * Math.tan(p1) / R) * (D * D / 2 - (5 + 3 * T + 10 * C - 4 * C * C - 9 * ep2) * D ** 4 / 24
-      + (61 + 90 * T + 298 * C + 45 * T * T - 252 * ep2 - 3 * C * C) * D ** 6 / 720);
-    const dLon = (D - (1 + 2 * T + C) * D ** 3 / 6 + (5 - 2 * C + 28 * T - 3 * C * C + 8 * ep2 + 24 * T * T) * D ** 5 / 120) / cp;
-    return { lat: lat * deg, lon: pr.utm * 6 - 183 + dLon * deg };
-  }
-  // inverse Lambert conformal conic (Canada Atlas Lambert, see lambertEN)
-  const rad = Math.PI / 180;
+  if (pr.tm) return tmInverse(E, N, pr.tm);
+  return lambertInverse(E, N);
+}
+// Canada Atlas Lambert (EPSG 3979) easting / northing -> latitude / longitude (degrees). Inverse of lambertEN.
+function lambertInverse(E, N) {
+  const deg = 180 / Math.PI, rad = Math.PI / 180, a = 6378137, f = 1 / 298.257222101, e2 = f * (2 - f), e = Math.sqrt(e2);
   const mf = (p) => Math.cos(p) / Math.sqrt(1 - e2 * Math.sin(p) ** 2);
   const tf = (p) => Math.tan(Math.PI / 4 - p / 2) / Math.pow((1 - e * Math.sin(p)) / (1 + e * Math.sin(p)), e / 2);
   const p1 = 49 * rad, p2 = 77 * rad;
@@ -4370,7 +4432,11 @@ const settings = {
   rangeMin: 0, rangeMax: 1,
   colormap: DEFAULT_COLORMAP,
   units: 'metric',   // or 'imperial' (eye menu > Units)
+  roads: false,      // roads layer (eye menu)
+  imagery: false,    // aerial imagery layer (eye menu)
+  imageryAlpha: 1,   // imagery strength over the hillshade / colours
 };
+try { Object.assign(settings, JSON.parse(localStorage.getItem('terrainLayers') || '{}')); } catch (e) { /* storage may be blocked */ }
 try { if (localStorage.getItem('terrainUnits') === 'imperial') settings.units = 'imperial'; } catch (e) { /* storage may be blocked */ }
 let dataMin = 0, dataMax = 1;
 let rangeUserSet = false;   // colour range chosen by the user (don't auto-fit over it)
@@ -4387,7 +4453,7 @@ function applyView() {
 }
 
 // Shown on the start screen and in File information. Keep in step with CACHE in sw.js.
-const APP_VERSION = 33;
+const APP_VERSION = 34;
 $('start-version').textContent = 'Version ' + APP_VERSION;
 
 const POINT_R = window.matchMedia('(pointer: coarse)').matches ? 10 : 6;   // tool point size, screen px
@@ -5005,6 +5071,173 @@ $('btn-autoscale').addEventListener('click', () => {
   if (settings.view !== 'elevation') setView('elevation');
   rangeUserSet = true;
   fitColoursToView();
+});
+
+// ---- Roads and imagery (eye menu switches) ----
+// One picture per layer for the open map's whole area, fetched when its switch
+// is on (once per map), kept as a texture and drawn by the terrain shader:
+// imagery under the contours, roads on top. Roads: NRCan CanVec map service
+// (free, Open Government Licence). Imagery: Saskatchewan Geospatial Imagery
+// Collaborative (SGIC) mosaic, ~0.4 m, Saskatchewan only.
+const ROADS_WMS = 'https://maps.geogratis.gc.ca/wms/canvec_en';
+const SGIC_IMAGERY = 'https://gis.saskatchewan.ca/imagery/rest/services/SGIC_Public_Orthophotos/ImageServer/exportImage';
+const LAYER_RES = { roads: 2, imagery: 0.5 };   // wanted metres per texture pixel (capped by the texture size)
+const LAYER_ATTRIB = { roads: 'Roads: CanVec, NRCan', imagery: 'Imagery: SGIC' };
+const layerJobs = { roads: null, imagery: null };   // fetches in progress (for the open map)
+
+const layerCap = () => Math.min(gl ? gl.getParameter(gl.MAX_TEXTURE_SIZE) : 4096, TOUCH_DEVICE ? 2048 : 4096);
+function layerSize(kind, wM, hM) {   // texture size for a map wM x hM metres
+  const s = Math.min(1, layerCap() / (Math.max(wM, hM) / LAYER_RES[kind]));
+  return { w: Math.max(16, Math.round(wM / LAYER_RES[kind] * s)), h: Math.max(16, Math.round(hM / LAYER_RES[kind] * s)) };
+}
+// Rough download size, for the estimate in Download my location: roads are a
+// sparse PNG, imagery a JPEG of about a quarter byte per pixel.
+function layerBytes(kind, sideM) {
+  const { w, h } = layerSize(kind, sideM, sideM);
+  return kind === 'roads' ? 60000 + w * h * 0.02 : w * h * 0.25;
+}
+// Saskatchewan's imagery only covers Saskatchewan (a box is close enough)
+const inSaskatchewan = (p) => p && p.lat > 48.99 && p.lat < 60.01 && p.lon > -110.01 && p.lon < -101.35;
+
+// The map projection a layer can be requested in directly, or null (then it is
+// fetched in Canada Atlas Lambert and warped onto the map).
+function layerDirectCrs(kind) {
+  const pr = mapProjection(map);
+  if (!pr || map.tm) return null;
+  if (pr.lambert) return map.epsg === 3978 ? 3978 : 3979;
+  if (pr.tm.k0 === 0.9996 && pr.tm.fn === 0) {   // UTM north: NAD83 codes (CSRS differs by a metre or two)
+    const zone = Math.round((pr.tm.lon0 + 183) / 6);
+    if (kind === 'imagery' && map.epsg) return map.epsg;
+    if (zone >= 7 && zone <= 23) return 26900 + zone;
+  }
+  return null;
+}
+
+function layerUrl(kind, crs, b, w, h) {
+  if (kind === 'roads') {
+    return `${ROADS_WMS}?service=WMS&version=1.3.0&request=GetMap&layers=road_segment_50k,track_segment_50k,trail_50k,road_ferry_50k`
+      + `&styles=&crs=EPSG:${crs}&bbox=${b.x0},${b.y0},${b.x1},${b.y1}&width=${w}&height=${h}&format=image/png&transparent=true`;
+  }
+  return `${SGIC_IMAGERY}?bbox=${b.x0},${b.y0},${b.x1},${b.y1}&bboxSR=${crs}&imageSR=${crs}&size=${w},${h}&format=jpg&f=image`;
+}
+
+async function fetchLayer(kind) {
+  const key = `${map.ox},${map.oy},${map.W},${map.H}`;
+  const wM = map.W * map.px, hM = map.H * map.py;
+  const { w, h } = layerSize(kind, wM, hM);
+  const crs = layerDirectCrs(kind);
+  let box, toTex;   // request box (in crs) and the matrix from picture pixels to texture pixels
+  let rw = w, rh = h;
+  if (crs) {
+    box = { x0: map.ox, y0: map.oy - hM, x1: map.ox + wM, y1: map.oy };
+    toTex = [1, 0, 0, 1, 0, 0];
+  } else {
+    // Lambert box around the map's corners; three corners fix the warp (it is
+    // a turn and a scale to well under a metre over a farm-sized map)
+    const corner = (fx, fy) => { const p = mapToLonLat(fx * map.W, fy * map.H, map); return lambertEN(p.lat, p.lon); };
+    const cs = [corner(0, 0), corner(1, 0), corner(0, 1), corner(1, 1)];
+    box = { x0: Math.min(...cs.map((c) => c.E)), x1: Math.max(...cs.map((c) => c.E)), y0: Math.min(...cs.map((c) => c.N)), y1: Math.max(...cs.map((c) => c.N)) };
+    const k = Math.min(1, layerCap() / (Math.max(box.x1 - box.x0, box.y1 - box.y0) / (wM / w)));
+    rw = Math.round((box.x1 - box.x0) / (wM / w) * k); rh = Math.round((box.y1 - box.y0) / (wM / w) * k);
+    const pic = (c) => [(c.E - box.x0) / (box.x1 - box.x0) * rw, (box.y1 - c.N) / (box.y1 - box.y0) * rh];
+    const [u0, v0] = pic(cs[0]), [u1, v1] = pic(cs[1]), [u2, v2] = pic(cs[2]);
+    // solve texture = M * picture for the corners (0,0), (w,0), (0,h)
+    const det = (u1 - u0) * (v2 - v0) - (u2 - u0) * (v1 - v0);
+    const a = w * (v2 - v0) / det, c = -w * (u2 - u0) / det, b = -h * (v1 - v0) / det, d = h * (u1 - u0) / det;
+    toTex = [a, b, c, d, -(a * u0 + c * v0), -(b * u0 + d * v0)];
+  }
+  const resp = await fetch(layerUrl(kind, crs || 3979, box, rw, rh));
+  if (!resp.ok || !/image/.test(resp.headers.get('content-type') || '')) throw new Error('layer service error ' + resp.status);
+  const bmp = await createImageBitmap(await resp.blob());
+  // onto a canvas the size of the texture; road lines are drawn a few times
+  // a pixel apart so they stay visible when the map is zoomed out
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d');
+  ctx.imageSmoothingQuality = 'high';
+  const shifts = kind === 'roads' ? [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]] : [[0, 0]];
+  for (const [dx, dy] of shifts) {
+    ctx.setTransform(toTex[0], toTex[1], toTex[2], toTex[3], toTex[4] + dx, toTex[5] + dy);
+    ctx.drawImage(bmp, 0, 0);
+  }
+  bmp.close && bmp.close();
+  if (!gl || !map || key !== `${map.ox},${map.oy},${map.W},${map.H}`) return;   // map closed meanwhile
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cv);
+  gl.generateMipmap(gl.TEXTURE_2D);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  if (layerTex[kind]) gl.deleteTexture(layerTex[kind].tex);
+  layerTex[kind] = { tex, key, w, h };
+}
+
+// Fetch whatever is switched on and not loaded yet for the open map.
+function refreshLayers() {
+  updateLayerUI();
+  if (!map || !gl || map.noGeoref) return;
+  const key = `${map.ox},${map.oy},${map.W},${map.H}`;
+  const want = ['roads', 'imagery'].filter((k) => settings[k] && !(layerTex[k] && layerTex[k].key === key) && !layerJobs[k]);
+  if (!want.length) { requestRender(); return; }
+  if (!mapProjection(map)) { showToast("This map's projection doesn't support roads or imagery"); return; }
+  if (want.includes('imagery') && !inSaskatchewan(mapToLonLat(map.W / 2, map.H / 2, map))) {
+    showToast('Imagery is only available in Saskatchewan for now');
+    want.splice(want.indexOf('imagery'), 1);
+    if (!want.length) return;
+  }
+  const names = want.map((k) => (k === 'roads' ? 'roads' : 'imagery')).join(' and ');
+  showToast(`Loading ${names}…`);
+  for (const k of want) {
+    layerJobs[k] = fetchLayer(k)
+      .then(() => { requestRender(); })
+      .catch((err) => {
+        console.warn('[terrain] layer failed', k, err);
+        showToast(navigator.onLine === false ? `No internet connection for ${k}` : `Couldn't load ${k}. Please try again.`);
+      })
+      .finally(() => {
+        layerJobs[k] = null;
+        if (!Object.values(layerJobs).some(Boolean) && $('toast').textContent.startsWith('Loading')) $('toast').hidden = true;
+        updateLayerUI();
+      });
+  }
+}
+function dropLayers() {
+  for (const k of ['roads', 'imagery']) {
+    if (layerTex[k] && gl) gl.deleteTexture(layerTex[k].tex);
+    layerTex[k] = null;
+  }
+  updateLayerUI();
+}
+function layerAttribution() {
+  return ['imagery', 'roads'].filter((k) => settings[k] && layerTex[k]).map((k) => LAYER_ATTRIB[k]).join(' · ');
+}
+function updateLayerUI() {
+  $('btn-roads').classList.toggle('active', settings.roads);
+  $('btn-imagery').classList.toggle('active', settings.imagery);
+  $('imagery-opts').hidden = !settings.imagery;
+  $('imagery-alpha').value = Math.round(settings.imageryAlpha * 100);
+  $('imagery-val').textContent = Math.round(settings.imageryAlpha * 100) + '%';
+  const a = map ? layerAttribution() : '';
+  $('attrib').textContent = a;
+  $('attrib').hidden = !a;
+}
+function saveLayers() {
+  try { localStorage.setItem('terrainLayers', JSON.stringify({ roads: settings.roads, imagery: settings.imagery, imageryAlpha: settings.imageryAlpha })); } catch (e) { /* storage may be blocked */ }
+}
+for (const k of ['roads', 'imagery']) {
+  $('btn-' + k).addEventListener('click', () => {
+    settings[k] = !settings[k];
+    saveLayers();
+    refreshLayers();
+  });
+}
+$('imagery-alpha').addEventListener('input', (e) => {
+  settings.imageryAlpha = +e.target.value / 100;
+  $('imagery-val').textContent = e.target.value + '%';
+  saveLayers();
+  requestRender();
 });
 
 // ---- Side bar: drag its "..." handle across (or tap it) to move the bar to
@@ -6568,6 +6801,16 @@ function paintDecorations(ctx, W, H) {
     ctx.fillStyle = '#2a2620'; ctx.fill();
   }
 
+  // Data credits for roads / imagery (bottom-left)
+  const credit = layerAttribution();
+  if (credit) {
+    ctx.font = `10px ${font}`;
+    const crW = ctx.measureText(credit).width + 12;
+    paintPanel(ctx, 16, H - 16 - 18, crW, 18);
+    ctx.fillStyle = '#6b6357'; ctx.textAlign = 'left';
+    ctx.fillText(credit, 22, H - 16 - 9);
+  }
+
   // Elevation colour legend (left of the scale bar, bottoms aligned; Elevation view only)
   if (settings.view === 'elevation') {
     const lut = getLut(settings.colormap);
@@ -7023,7 +7266,7 @@ function onMapShown(data, ms) {
   map = {
     W: m.W, H: m.H, px: m.px, py: m.py, ox: m.ox, oy: m.oy, noGeoref: m.noGeoref,
     qOff: data.qOff, qScale: data.qScale, isDsm: data.isDsm,
-    epsg: m.epsg, crsName: m.crsName,   // for the GPS location dot
+    epsg: m.epsg, crsName: m.crsName, tm: m.tm,   // for the GPS location dot and latitude / longitude
   };
   view.rot = gridConvergence(m);   // true north up, so grid roads and section lines run straight
   dataMin = data.dataMin; dataMax = data.dataMax;
@@ -7052,7 +7295,7 @@ function onMapShown(data, ms) {
     `Area: ${widthKm} &times; ${heightKm} ${sizeU} at ${+m.px.toFixed(3)} m pixels (${m.W.toLocaleString()} &times; ${m.H.toLocaleString()})<br>` +
     `Elevation: ${fmtElev(dataMin)} &ndash; ${fmtElev(dataMax)}<br>` +
     `Projection: ${escapeHtml(crs)}<br>` +
-    (view.rot ? `Turned ${Math.abs(view.rot * 180 / Math.PI).toFixed(2)}&deg; so true north is up<br>` : '') +
+    (Math.abs(view.rot) > 1e-4 ? `Turned ${Math.abs(view.rot * 180 / Math.PI).toFixed(2)}&deg; so true north is up<br>` : '') +
     (m.step > 1 ? `Detail: every ${m.step === 2 ? '2nd' : m.step === 3 ? '3rd' : m.step + 'th'} pixel (${fmtM(m.px)}; the file is ${fmtM(m.fullPx)}) so it fits in this device's memory<br>` : '') +
     `Opened in ${(ms / 1000).toFixed(1)} s<br>` +
     `App version ${APP_VERSION}`;
@@ -7076,6 +7319,7 @@ function onMapShown(data, ms) {
   updateProfileButtons();
   fitToViewport();
   armProfileTool();
+  refreshLayers();   // roads / imagery, if switched on
 }
 
 function escapeHtml(s) {
@@ -7161,10 +7405,11 @@ try {
 
 const DL_SEGS = [['dl-type', 'type'], ['dl-size', 'size'], ['dl-res', 'res']];
 
-// Side of the square in pixels, and the uncompressed float32 GeoTIFF size.
+// Side of the square in pixels, and the download size: the Lambert area around
+// the true-north square is about 10% wider each way (the 6° turn in Saskatchewan).
 function dlPlan() {
   const sidePx = Math.round(dlChoice.size * 1000 / dlChoice.res);
-  return { sidePx, sideM: sidePx * dlChoice.res, bytes: sidePx * sidePx * 4 + 2000 };
+  return { sidePx, sideM: sidePx * dlChoice.res, bytes: Math.round((sidePx * 1.1) ** 2 * 4) + 2000 };
 }
 // A square is offered at a resolution only if the phone could open it at full detail.
 const dlFits = (sizeKm, res) => (sizeKm * 1000 / res) ** 2 <= TOUCH_MAX_PIXELS;
@@ -7202,9 +7447,14 @@ function updateDlPanel() {
     for (const b of $(id).children) b.classList.toggle('active', b.dataset.v === String(dlChoice[key]));
   }
   const p = dlPlan();
-  const secs = 3 + p.bytes * 8 / (dlSpeedMbps() * 1e6);
-  $('dl-estimate').innerHTML = `<b>${formatMB(p.bytes)}</b> &middot; about ${formatDuration(secs)}`
-    + `<br><span class="dim">${Math.round(p.sideM ** 2 / M2_PER_ACRE).toLocaleString()} acres &middot; ${p.sidePx.toLocaleString()} &times; ${p.sidePx.toLocaleString()} px</span>`;
+  // roads / imagery come down too when they're switched on (each its own short
+  // server wait; they load alongside the map, so their time overlaps less)
+  const extras = ['roads', 'imagery'].filter((k) => settings[k]);
+  const bytes = p.bytes + extras.reduce((s, k) => s + layerBytes(k, p.sideM), 0);
+  const secs = 3 + extras.length * 2 + bytes * 8 / (dlSpeedMbps() * 1e6) + p.sidePx * p.sidePx / 20e6;   // + straightening
+  const incl = extras.length ? ` &middot; incl. ${extras.join(' + ')}` : '';
+  $('dl-estimate').innerHTML = `<b>${formatMB(bytes)}</b> &middot; about ${formatDuration(secs)}`
+    + `<br><span class="dim">${Math.round(p.sideM ** 2 / M2_PER_ACRE).toLocaleString()} acres &middot; ${p.sidePx.toLocaleString()} &times; ${p.sidePx.toLocaleString()} px${incl}</span>`;
 }
 for (const [id, key] of DL_SEGS) {
   $(id).addEventListener('click', (e) => {
@@ -7226,6 +7476,124 @@ $('dl-back').addEventListener('click', () => {
   if (dlAbort) dlAbort.abort();
   else showDlPanel(false);
 });
+
+// The elevation service's GeoTIFF (uncompressed 32-bit floats, strips or
+// tiles, either byte order) -> { data: Float32Array, W, H, g: georef }, with
+// missing pixels as NaN.
+async function readFloatRaster(t) {
+  if (t.comp !== 1 || t.bps !== 32 || t.fmt !== 3 || !t.georef) throw new UserError('The elevation server sent a file this app could not read.');
+  const W = t.width, H = t.height, data = new Float32Array(W * H);
+  const missing = (v) => v !== v || v === t.nodata || v < -1e4;
+  const blockW = t.tiled ? t.tileW : W, blockH = t.tiled ? t.tileH : t.rps, across = Math.ceil(W / blockW);
+  for (let b = 0; b < t.offsets.length; b++) {
+    const dv = await readDv(t.file, t.offsets[b], t.counts[b]);
+    const bx = (b % across) * blockW, by = Math.floor(b / across) * blockH;
+    const rows = Math.min(blockH, H - by), cols = Math.min(blockW, W - bx);
+    for (let r = 0; r < rows; r++) {
+      const o = (by + r) * W + bx, s = r * blockW * 4;
+      for (let x = 0; x < cols; x++) {
+        const v = dv.getFloat32(s + x * 4, t.le);
+        data[o + x] = missing(v) ? NaN : v;
+      }
+    }
+  }
+  return { data, W, H, g: t.georef };
+}
+
+// Resample the downloaded Lambert grid onto the true-north square sq
+// ({ ox, oy, n, res, tm }). The exact projection is worked out on a coarse
+// lattice (every 32 px) and interpolated in between - it bends by well under a
+// millimetre over 32 pixels - then each pixel is read bilinearly from the source.
+async function straightenToTrueNorth(src, sq, onProgress, signal) {
+  const { n, res, tm } = sq, G = 32, nG = Math.ceil(n / G) + 1;
+  const lx = new Float64Array(nG * nG), ly = new Float64Array(nG * nG);
+  for (let gj = 0; gj < nG; gj++) {
+    for (let gi = 0; gi < nG; gi++) {
+      const p = tmInverse(sq.ox + (Math.min(gi * G, n) + 0.5) * res, sq.oy - (Math.min(gj * G, n) + 0.5) * res, tm);
+      const q = lambertEN(p.lat, p.lon);
+      lx[gj * nG + gi] = (q.E - src.g.ox) / src.g.sx - 0.5;   // source pixel (centres on whole numbers)
+      ly[gj * nG + gi] = (src.g.oy - q.N) / src.g.sy - 0.5;
+    }
+  }
+  const out = new Float32Array(n * n), { data, W, H } = src;
+  const rowX = new Float64Array(nG), rowY = new Float64Array(nG);
+  for (let j = 0; j < n; j++) {
+    const gjf = Math.min(j / G, nG - 1.000001), gj = Math.floor(gjf), fy = gjf - gj;
+    for (let gi = 0; gi < nG; gi++) {
+      const a = gj * nG + gi, b = a + nG;
+      rowX[gi] = lx[a] + (lx[b] - lx[a]) * fy;
+      rowY[gi] = ly[a] + (ly[b] - ly[a]) * fy;
+    }
+    const o = j * n;
+    for (let i = 0; i < n; i++) {
+      const gif = Math.min(i / G, nG - 1.000001), gi = Math.floor(gif), fx = gif - gi;
+      const sx = rowX[gi] + (rowX[gi + 1] - rowX[gi]) * fx, sy = rowY[gi] + (rowY[gi + 1] - rowY[gi]) * fx;
+      const x0 = Math.floor(sx), y0 = Math.floor(sy);
+      if (x0 < 0 || y0 < 0 || x0 >= W - 1 || y0 >= H - 1) { out[o + i] = NaN; continue; }
+      const k = y0 * W + x0, ax = sx - x0, ay = sy - y0;
+      const v00 = data[k], v10 = data[k + 1], v01 = data[k + W], v11 = data[k + W + 1];
+      if (v00 === v00 && v10 === v10 && v01 === v01 && v11 === v11) {
+        out[o + i] = (v00 + (v10 - v00) * ax) * (1 - ay) + (v01 + (v11 - v01) * ax) * ay;
+      } else {   // edge of the data: the nearest known neighbour
+        const near = ay < 0.5 ? (ax < 0.5 ? [v00, v10, v01, v11] : [v10, v00, v11, v01]) : (ax < 0.5 ? [v01, v11, v00, v10] : [v11, v01, v10, v00]);
+        out[o + i] = near.find((v) => v === v) ?? NaN;
+      }
+    }
+    if (j % 256 === 255) {
+      onProgress(j / n);
+      await nextFrame();
+      if (signal.aborted) throw new DOMException('', 'AbortError');
+    }
+  }
+  return out;
+}
+
+// The true-north square as a GeoTIFF (little-endian, uncompressed 32-bit
+// floats) with a user-defined transverse Mercator in its GeoKeys, so GIS
+// programs place it correctly too. Missing pixels are written as -32767.
+function writeTrueNorthTiff(out, sq, citation) {
+  const { n, res, tm } = sq, ND = -32767;
+  for (let i = 0; i < out.length; i++) if (out[i] !== out[i]) out[i] = ND;
+  const rps = 16, nStrips = Math.ceil(n / rps);
+  const geoKeys = [
+    [1024, 0, 1, 1], [1025, 0, 1, 1], [1026, 34737, citation.length + 1, 0],   // projected, pixel is area, name
+    [2048, 0, 1, 4617], [2054, 0, 1, 9102],                                    // NAD83(CSRS), degrees
+    [3072, 0, 1, 32767], [3074, 0, 1, 32767], [3075, 0, 1, 1], [3076, 0, 1, 9001],   // user-defined TM, metres
+    [3080, 34736, 1, 0], [3081, 34736, 1, 1], [3082, 34736, 1, 2], [3083, 34736, 1, 3], [3092, 34736, 1, 4],
+  ];
+  const offsets = new Array(nStrips).fill(0), counts = [];
+  for (let s = 0; s < nStrips; s++) counts.push(Math.min(rps, n - s * rps) * n * 4);
+  const entries = [   // [tag, type, values]: 2 ASCII, 3 SHORT, 4 LONG, 12 DOUBLE
+    [256, 4, [n]], [257, 4, [n]], [258, 3, [32]], [259, 3, [1]], [262, 3, [1]], [273, 4, offsets],
+    [277, 3, [1]], [278, 4, [rps]], [279, 4, counts], [284, 3, [1]], [339, 3, [3]],
+    [33550, 12, [res, res, 0]], [33922, 12, [0, 0, 0, sq.ox, sq.oy, 0]],
+    [34735, 3, [1, 1, 0, geoKeys.length, ...geoKeys.flat()]], [34736, 12, [tm.lon0, tm.lat0, tm.fe, tm.fn, tm.k0]],
+    [34737, 2, citation + '|'], [42113, 2, String(ND)],
+  ];
+  const size = { 2: 1, 3: 2, 4: 4, 12: 8 };
+  const bytesOf = ([, type, v]) => (type === 2 ? v.length + 1 : v.length * size[type]);
+  // layout: header, the directory, then the longer values, then the pixels
+  let pos = 8 + 2 + entries.length * 12 + 4;
+  const where = entries.map((e) => { if (bytesOf(e) <= 4) return 0; const at = pos; pos += (bytesOf(e) + 7) & ~7; return at; });
+  const dataStart = pos;
+  for (let s = 0; s < nStrips; s++) offsets[s] = dataStart + s * rps * n * 4;
+  const head = new ArrayBuffer(dataStart), dv = new DataView(head);
+  dv.setUint16(0, 0x4949); dv.setUint16(2, 42, true); dv.setUint32(4, 8, true); dv.setUint16(8, entries.length, true);
+  const put = (at, type, v) => {
+    if (type === 2) { for (let i = 0; i < v.length; i++) dv.setUint8(at + i, v.charCodeAt(i)); dv.setUint8(at + v.length, 0); return; }
+    v.forEach((x, i) => {
+      if (type === 3) dv.setUint16(at + i * 2, x, true);
+      else if (type === 4) dv.setUint32(at + i * 4, x, true);
+      else dv.setFloat64(at + i * 8, x, true);
+    });
+  };
+  entries.forEach((e, k) => {
+    const [tag, type, v] = e, o = 10 + k * 12;
+    dv.setUint16(o, tag, true); dv.setUint16(o + 2, type, true); dv.setUint32(o + 4, type === 2 ? v.length + 1 : v.length, true);
+    if (where[k]) { dv.setUint32(o + 8, where[k], true); put(where[k], type, v); } else put(o + 8, type, v);
+  });
+  return new Blob([head, out], { type: 'image/tiff' });   // Float32Array bytes: little-endian on every phone and PC
+}
 
 function currentPosition() {
   return new Promise((resolve, reject) => {
@@ -7250,14 +7618,30 @@ $('dl-go').addEventListener('click', async () => {
     const pos = await currentPosition();
     if (signal.aborted) throw new DOMException('', 'AbortError');
     const lat = pos.coords.latitude, lon = pos.coords.longitude;
-    const { E, N } = lambertEN(lat, lon);
-    // the square, on whole pixels of the mosaic grid
+    // The square is laid out on a transverse Mercator grid centred on your own
+    // meridian, so its edges run true north-south / east-west like the roads.
+    // The service only serves Canada Atlas Lambert (about 6° off true north in
+    // Saskatchewan), so the Lambert area covering the square is downloaded and
+    // resampled onto that grid below.
     const { res } = dlChoice, plan = dlPlan();
-    const x0 = Math.round(E / res - plan.sidePx / 2) * res, y0 = Math.round(N / res - plan.sidePx / 2) * res;
+    const tm = { lon0: +lon.toFixed(6), lat0: 0, k0: 1, fe: 500000, fn: 0 };
+    const c = tmForward(lat, lon, tm);
+    const sq = {   // the square's top-left corner, on whole pixels
+      ox: Math.round(c.E / res - plan.sidePx / 2) * res, oy: Math.round(c.N / res + plan.sidePx / 2) * res,
+      n: plan.sidePx, res, tm,
+    };
+    // the Lambert box around it (corners and edge middles), two pixels to spare
+    let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+    for (const fx of [0, 0.5, 1]) for (const fy of [0, 0.5, 1]) {
+      const p = tmInverse(sq.ox + fx * plan.sideM, sq.oy - fy * plan.sideM, tm), q = lambertEN(p.lat, p.lon);
+      bx0 = Math.min(bx0, q.E); bx1 = Math.max(bx1, q.E); by0 = Math.min(by0, q.N); by1 = Math.max(by1, q.N);
+    }
+    const x0 = (Math.floor(bx0 / res) - 2) * res, y0 = (Math.floor(by0 / res) - 2) * res;
+    const x1 = (Math.ceil(bx1 / res) + 2) * res, y1 = (Math.ceil(by1 / res) + 2) * res;
     // WCS 1.1 bounding boxes run between the outer pixel centres, so half a pixel in
     const crs = 'urn:ogc:def:crs:EPSG::3979', h = res / 2;
     const url = `${HRDEM_WCS}?service=WCS&version=1.1.1&request=GetCoverage&identifier=${dlChoice.type}&format=image/geotiff`
-      + `&BoundingBox=${x0 + h},${y0 + h},${x0 + plan.sideM - h},${y0 + plan.sideM - h},${crs}`
+      + `&BoundingBox=${x0 + h},${y0 + h},${x1 - h},${y1 - h},${crs}`
       + `&GridBaseCRS=${crs}&GridOffsets=${res},-${res}`;
 
     showLoadProgress('Waiting for the elevation server…', 0);
@@ -7282,7 +7666,7 @@ $('dl-go').addEventListener('click', async () => {
       got += value.length;
       showLoadProgress(`Downloading… ${formatMB(got)} of ${formatMB(total)}`, got / total);
     }
-    const blob = new Blob(chunks, { type: 'image/tiff' });
+    let blob = new Blob(chunks, { type: 'image/tiff' });
     if (!/tiff/i.test(type)) {
       const msg = (await blob.text()).match(/ExceptionText>([^<]+)/);
       throw new UserError('The elevation server could not make this map' + (msg ? `: ${msg[1].trim()}` : '.'));
@@ -7296,9 +7680,16 @@ $('dl-go').addEventListener('click', async () => {
 
     const ns = lat >= 0 ? 'N' : 'S', ew = lon >= 0 ? 'E' : 'W';
     const name = `HRDEM_${dlChoice.type.toUpperCase()}_${Math.abs(lat).toFixed(4)}${ns}_${Math.abs(lon).toFixed(4)}${ew}_${dlChoice.size}km_${res}m.tif`;
+    chunks.length = 0;   // the blob holds the bytes now
+    showLoadProgress('Straightening to true north…', 0);
+    const src = await readFloatRaster(await parseTiff(new File([blob], 'download.tif')));
+    blob = null;
+    if (signal.aborted) throw new DOMException('', 'AbortError');
+    const out = await straightenToTrueNorth(src, sq, (f) => showLoadProgress(`Straightening to true north… ${Math.round(f * 100)}%`, f), signal);
+    const tif = writeTrueNorthTiff(out, sq, `Transverse Mercator, central meridian ${Math.abs(lon).toFixed(4)} ${ew} (true north up), NAD83(CSRS)`);
     dlAbort = null;
     showDlPanel(false);
-    await loadFiles([new File([blob], name, { type: 'image/tiff' })],
+    await loadFiles([new File([tif], name, { type: 'image/tiff' })],
       { emptyMsg: "There's no LiDAR elevation data for your location yet." });
   } catch (err) {
     if (err.name === 'AbortError') $('load-progress').hidden = true;
