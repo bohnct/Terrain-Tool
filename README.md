@@ -21,10 +21,10 @@ The Google Drive app treats a `.tif` as a picture: **Download** saves it to Phot
 - keep the elevation files **zipped** in Drive (Clip Zip Ship downloads already are). A `.zip` stays a normal file, and the app opens the `.tif` inside it directly.
 
 ## Good to know
-- **Buttons**: the tools are in the bar along the bottom. The small buttons (Bohn Ag menu, eye menu, auto colours, my location, distance scale) are in a column on the right. Drag the **⋯** handle under them across the screen, or tap it, to move them to the left side.
+- **Buttons**: the tools are in the bar along the bottom. The small buttons (Bohn Ag menu, eye menu, map layers, auto colours, my location, distance scale) are in a column on the right. To have them on the left, use **Buttons** in the eye menu.
 - **Reopen**: the last map is kept on the device; the start screen has a one-tap button to reopen it. **Home** (in the Bohn Ag menu) goes back to the start screen.
 - **Picture** (in the Bohn Ag menu) saves a picture of the map with its results. **3D view** is at the top of the eye menu.
-- **Roads** and **Imagery** (eye menu): roads from NRCan's CanVec map anywhere in Canada; aerial imagery from Saskatchewan's SGIC (Saskatchewan only). They need internet the first time a map is opened with them switched on. The imagery strength slider blends the photo with the shading underneath.
+- **Map layers** (layers button): Hillshade or Elevation shows the LiDAR alone (satellite and roads turn off); Satellite (Saskatchewan aerial photo, SGIC) and Roads (NRCan CanVec, all of Canada) go on top. They need internet the first time a map is opened with them on. Satellite strength (eye menu) blends the photo with the LiDAR underneath.
 - **Download area** squares are laid out true north, so their edges run along the roads and section lines.
 - **Large files** are opened at lower detail on phones and tablets (every 2nd or 3rd pixel) so they fit in memory. A badge under the file name and the file information in the Bohn Ag menu show the detail used.
 - **My location** (arrow button; its colour is under Colours › GPS): the first tap shows a blue dot, the second keeps the map centred on you, and the third turns it off. The first time, iPhone asks for permission. If it was refused: Settings › Privacy & Security › Location Services.
