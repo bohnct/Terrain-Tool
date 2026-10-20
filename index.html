@@ -4744,7 +4744,7 @@ const settings = {
   contours: false,
   contourAlpha: 0.85,
   contourSmooth: true,
-  contourColor: 'auto',
+  contourColor: 'black',
   toolLine: 'auto',
   tilt3d: false,     // tilted 3D view (bottom bar button)
   tiltDeg: 50,       // camera tilt from straight down, degrees
@@ -4778,7 +4778,7 @@ function applyView() {
 }
 
 // Shown on the start screen and in File information. Keep in step with CACHE in sw.js.
-const APP_VERSION = 47;
+const APP_VERSION = 48;
 $('start-version').textContent = 'Version ' + APP_VERSION;
 
 const POINT_R = window.matchMedia('(pointer: coarse)').matches ? 10 : 6;   // tool point size, screen px
@@ -5156,11 +5156,12 @@ const COLOR_ITEMS = {
   // GPS Auto: blue on the hillshade / satellite; black (white edge) on the elevation colours, which are full of blues
   gps: { key: 'gpsColor', choices: ['auto', 'blue', 'red', 'magenta', 'orange', 'yellow', 'black', 'white'], auto: () => (onColours() && !settings.imagery ? 'black' : 'blue'), autoPair: ['blue', 'black'] },
 };
-settings.contourColor = settings.toolLine = settings.roadColor = 'auto';
-settings.gpsColor = 'auto';
+settings.toolLine = settings.roadColor = settings.gpsColor = 'auto';
+settings.contourColor = 'black';   // contours: black unless changed
 try {
   const saved = JSON.parse(localStorage.getItem('terrainColours') || 'null')
     || { toolLine: localStorage.getItem('terrainToolLine') || 'auto' };   // older versions saved only this
+  if (!saved.v && saved.contourColor === 'auto') saved.contourColor = 'black';   // Auto was the default before version 48
   for (const it of Object.values(COLOR_ITEMS)) if (it.choices.includes(saved[it.key])) settings[it.key] = saved[it.key];
 } catch (e) { /* storage may be blocked */ }
 const colorName = (item) => { const it = COLOR_ITEMS[item], c = settings[it.key]; return c === 'auto' ? it.auto() : c; };
@@ -5212,7 +5213,7 @@ function renderColors() {
 }
 function setColor(item, c) {
   settings[COLOR_ITEMS[item].key] = c;
-  try { localStorage.setItem('terrainColours', JSON.stringify({ contourColor: settings.contourColor, toolLine: settings.toolLine, roadColor: settings.roadColor, gpsColor: settings.gpsColor })); } catch (e) { /* storage may be blocked */ }
+  try { localStorage.setItem('terrainColours', JSON.stringify({ v: 2, contourColor: settings.contourColor, toolLine: settings.toolLine, roadColor: settings.roadColor, gpsColor: settings.gpsColor })); } catch (e) { /* storage may be blocked */ }
   applyToolLineColors();
   applyGpsColors();
   renderColors();
@@ -5236,7 +5237,8 @@ applyGpsColors();
 renderColors();
 
 function setView(v) {
-  if (v === 'elevation' && settings.view !== 'elevation') setContours(true);   // the colour view opens with contours
+  // the colour view opens with contours; hillshade (and satellite, below) without
+  if (v !== settings.view) setContours(v === 'elevation');
   settings.view = v;
   updateLayerUI();
   $('color-section').hidden = v !== 'elevation';
@@ -5466,7 +5468,8 @@ function fitColoursToView() {
 // Quick button (right-hand column): from Hillshade it switches to Elevation first.
 $('btn-autoscale').addEventListener('click', () => {
   if (!map) return;
-  if (settings.view !== 'elevation') setView('elevation');
+  // from hillshade or satellite: switch to the colours, as picking Elevation in Map layers does
+  if (settings.view !== 'elevation' || settings.imagery) document.querySelector('#layers-card .layer-tile[data-layer="elevation"]').click();
   rangeUserSet = true;
   fitColoursToView();
 });
@@ -5664,10 +5667,15 @@ $('layers-card').addEventListener('click', (e) => {
   if (!b) return;
   const l = b.dataset.layer;
   if (l === 'hillshade' || l === 'elevation') {
+    const fresh = settings.view !== l || settings.imagery;   // not what was showing (e.g. under the satellite)
     settings.imagery = false;
     settings.roads = false;
     setView(l);
-  } else settings[l] = !settings[l];
+    if (fresh) setContours(l === 'elevation');
+  } else {
+    settings[l] = !settings[l];
+    if (l === 'imagery' && settings.imagery) setContours(false);   // satellite opens without contours
+  }
   saveLayers();
   refreshLayers();
 });
@@ -7738,6 +7746,7 @@ function onMapShown(data, ms) {
   }
 
   setView('hillshade');
+  setContours(false);   // a new map opens on satellite, without contours
   updateRangeUI();
   renderProfileOverlay();
   renderProfileChart();
