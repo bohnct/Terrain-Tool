@@ -826,6 +826,24 @@
     :root[data-theme="dark"] .rail-btn.has-result { background: rgba(76, 154, 85, 0.22); color: #8fd197; box-shadow: inset 0 0 0 1.5px rgba(143, 209, 151, 0.45); }
     .rail-btn svg { width: 20px; height: 20px; }
     .rail-btn:hover { background: transparent; }
+    /* hide / show the tool bar (just the map and GPS while driving) */
+    #rail-min {
+      flex: none; width: 28px; height: 42px; padding: 0; margin-left: 2px;
+      display: flex; align-items: center; justify-content: center;
+      background: transparent; border: none; border-left: 1px solid var(--panel-border); border-radius: 0;
+      color: var(--text-dim); cursor: pointer;
+    }
+    #rail-show {
+      position: absolute; bottom: var(--bar-gap); left: 50%; transform: translateX(-50%); z-index: 13;
+      width: 64px; height: 30px; padding: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--btn-bg); border: 1px solid var(--panel-border); border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3); color: var(--text); cursor: pointer;
+      backdrop-filter: blur(14px) saturate(160%); -webkit-backdrop-filter: blur(14px) saturate(160%);
+    }
+    #rail-min svg, #rail-show svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+    :root.rail-hidden #tool-rail, :root.rail-hidden #profile-panel { display: none; }   /* the open tool's panel goes too; its results stay */
+    :root.rail-hidden { --tabbar-h: calc(var(--bar-gap) + 38px); }   /* cards drop down to the small tab */
     .rail-btn.active { background: var(--accent); color: #fff; border-color: transparent; }
     /* tool closed but its results still on the map: a soft green pill (open = solid green) */
     .rail-btn.has-result { background: rgba(46, 107, 52, 0.16); color: var(--accent); box-shadow: inset 0 0 0 1.5px rgba(46, 107, 52, 0.45); }
@@ -1092,7 +1110,11 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5l7-3.5 9 5-3 10.5-11 .5z" stroke-dasharray="3 2"/></svg>Area</button>
     <button class="rail-btn" data-mode="slope" title="Slope and landform map of a field">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19.5l6-9.5 4 5 3-4 5 8.5z"/></svg>Slope</button>
+    <button id="rail-min" title="Hide the tool bar" aria-label="Hide the tool bar">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></button>
   </div>
+  <button id="rail-show" title="Show the tool bar" aria-label="Show the tool bar" hidden>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 14.5l6-6 6 6"/></svg></button>
 
   <div id="profile-panel" class="panel" hidden>
     <div class="panel-header">
@@ -4353,7 +4375,7 @@ function setRotLock(on) {
   settings.rotLock = on;
   $('btn-rotlock').classList.toggle('active', on);
   $('btn-rotlock').setAttribute('aria-pressed', on);
-  try { localStorage.setItem('terrainRotLock', on ? '1' : ''); } catch (e) { /* storage may be blocked */ }
+  try { localStorage.setItem('terrainRotLock', on ? '1' : '0'); } catch (e) { /* storage may be blocked */ }
   if (on && map) resetNorth();
 }
 $('btn-rotlock').addEventListener('click', () => setRotLock(!settings.rotLock));
@@ -4726,7 +4748,7 @@ const settings = {
   toolLine: 'auto',
   tilt3d: false,     // tilted 3D view (bottom bar button)
   tiltDeg: 50,       // camera tilt from straight down, degrees
-  rotLock: false,    // map locked north up (eye menu lock button)
+  rotLock: true,     // map locked north up (eye menu lock button; on unless turned off)
   exag: 5,           // height multiplier in the 3D view
   relief: 0.5,
   rangeMin: 0, rangeMax: 1,
@@ -4738,7 +4760,7 @@ const settings = {
 };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('terrainLayers') || '{}')); } catch (e) { /* storage may be blocked */ }
 try { if (localStorage.getItem('terrainUnits') === 'imperial') settings.units = 'imperial'; } catch (e) { /* storage may be blocked */ }
-try { settings.rotLock = localStorage.getItem('terrainRotLock') === '1'; } catch (e) { /* storage may be blocked */ }
+try { settings.rotLock = localStorage.getItem('terrainRotLock') !== '0'; } catch (e) { /* storage may be blocked */ }   // on unless turned off
 $('btn-rotlock').classList.toggle('active', settings.rotLock);
 let dataMin = 0, dataMax = 1;
 let rangeUserSet = false;   // colour range chosen by the user (don't auto-fit over it)
@@ -4756,7 +4778,7 @@ function applyView() {
 }
 
 // Shown on the start screen and in File information. Keep in step with CACHE in sw.js.
-const APP_VERSION = 46;
+const APP_VERSION = 47;
 $('start-version').textContent = 'Version ' + APP_VERSION;
 
 const POINT_R = window.matchMedia('(pointer: coarse)').matches ? 10 : 6;   // tool point size, screen px
@@ -4766,7 +4788,7 @@ function fitInsets() {
   const vr = viewport.getBoundingClientRect();
   return {
     top: Math.max(0, $('brand').getBoundingClientRect().bottom - vr.top),
-    bottom: Math.max(0, vr.bottom - $('tool-rail').getBoundingClientRect().top),
+    bottom: Math.max(0, vr.bottom - $(railHidden() ? 'rail-show' : 'tool-rail').getBoundingClientRect().top),
   };
 }
 
@@ -5214,6 +5236,7 @@ applyGpsColors();
 renderColors();
 
 function setView(v) {
+  if (v === 'elevation' && settings.view !== 'elevation') setContours(true);   // the colour view opens with contours
   settings.view = v;
   updateLayerUI();
   $('color-section').hidden = v !== 'elevation';
@@ -6926,7 +6949,7 @@ function positionMapLabels(cam) {
   const W = vr.width, H = vr.height, m = 8;
   // On-screen panels and buttons a label shouldn't hide under
   const ui = [];
-  document.querySelectorAll('#side-bar, #profile-panel, #tool-rail, #result-card, .corner-card').forEach((el) => {
+  document.querySelectorAll('#side-bar, #profile-panel, #tool-rail, #rail-show, #result-card, .corner-card').forEach((el) => {
     if (el.hidden || !el.offsetParent) return;
     const b = el.getBoundingClientRect();
     ui.push({ x: b.left - vr.left, y: b.top - vr.top, w: b.width, h: b.height });
@@ -7627,6 +7650,17 @@ function updateRail() {
 }
 
 document.querySelectorAll('.rail-btn').forEach((b) => b.addEventListener('click', () => onRailClick(b.dataset.mode)));
+// Hide the tool bar down to a small tab (remembered); tap the tab to bring it back
+function railHidden() { return document.documentElement.classList.contains('rail-hidden'); }
+function setRailHidden(on) {
+  document.documentElement.classList.toggle('rail-hidden', on);
+  $('rail-show').hidden = !on;
+  try { localStorage.setItem('terrainRailHidden', on ? '1' : ''); } catch (e) { /* storage may be blocked */ }
+  if (map) { applyView(); positionMapLabels(); }
+}
+$('rail-min').addEventListener('click', () => setRailHidden(true));
+$('rail-show').addEventListener('click', () => setRailHidden(false));
+try { if (localStorage.getItem('terrainRailHidden') === '1') setRailHidden(true); } catch (e) { /* storage may be blocked */ }
 $('btn-profile-draw').addEventListener('click', () => {
   // "Done" on an outline with 3+ points closes it into an area.
   if (profileDrawMode && isOutlineMode() && profilePoints.length >= 3 && !areaClosed) { closeArea(); return; }
