@@ -26,8 +26,9 @@ The Google Drive app treats a `.tif` as a picture: **Download** saves it to Phot
 - **Picture** (in the Bohn Ag menu) saves a picture of the map with its results. **3D view** is at the top of the eye menu.
 - **Map layers** (layers button): Hillshade or Elevation shows the LiDAR alone (satellite and roads turn off); Satellite (Saskatchewan aerial photo, SGIC) and Roads (NRCan CanVec, all of Canada) go on top. Maps open on Satellite with Roads (Roads only, outside Saskatchewan). They need internet the first time a map is opened with them on. Satellite strength (eye menu) blends the photo with the LiDAR underneath.
 - **Download area** squares are laid out true north, so their edges run along the roads and section lines.
+- **Turning the map**: twist with two fingers (Alt + mouse wheel on a PC). A compass appears under the distance scale while north is not up; tap it to turn north back up. **Rotation lock** in the eye menu keeps north up.
 - **Large files** are opened at lower detail on phones and tablets (every 2nd or 3rd pixel) so they fit in memory. A badge under the file name and the file information in the Bohn Ag menu show the detail used.
-- **My location** (arrow button; its colour is under Colours › GPS): the first tap shows a blue dot, the second keeps the map centred on you, and the third turns it off. The first time, iPhone asks for permission. If it was refused: Settings › Privacy & Security › Location Services.
+- **My location** (arrow button; its colour is under Colours › GPS): the first tap shows a blue dot, the second keeps the map centred on you and turned so the way you are going is up, and the third turns it off. The dot glides between GPS fixes; the Point tool shows the fix rate (updates per second). The first time, iPhone asks for permission. If it was refused: Settings › Privacy & Security › Location Services.
 - **Pictures and drainage CSVs** open the share sheet on phones and tablets (Save to Files, Messages, Mail, etc.) and download on a PC.
 
 ## Updating

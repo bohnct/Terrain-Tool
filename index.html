@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Terrain Analysis Tool</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
@@ -82,7 +82,9 @@
   :root[data-theme="dark"] #profile-chart rect[stroke] { stroke: #464940; }
   :root[data-theme="dark"] #profile-chart polyline[stroke="#5a3a1a"] { stroke: #e0b07a; }
   :root[data-theme="dark"] #profile-chart polyline[stroke="#1f77b4"] { stroke: #6cb4ee; }
-  * { box-sizing: border-box; }
+  /* no browser double-tap or pinch zoom of the page (easy to do by accident in a moving
+     vehicle); lists still scroll, and the map does its own pinch zoom */
+  * { box-sizing: border-box; touch-action: pan-x pan-y; }
   html, body {
     margin: 0; padding: 0; width: 100%; height: 100%;
     background: var(--map-bg);
@@ -448,17 +450,6 @@
   .range-handle.active { border-color: var(--accent); }
   @media (hover: hover) { .range-handle:hover { border-color: var(--accent); } }
   .range-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-dim); margin-top: 2px; }
-  .range-values { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
-  .range-values input[type="number"] {
-    width: 54px; padding: 4px 3px; text-align: center;
-    font-variant-numeric: tabular-nums;
-    -moz-appearance: textfield; appearance: textfield;
-  }
-  /* no grey spinner arrows - the numbers are typed or set with the handles */
-  .range-values input[type="number"]::-webkit-inner-spin-button,
-  .range-values input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-  .range-values .sep { color: var(--text-dim); }
-  .range-values .btn { margin-left: auto; font-size: 11px; padding: 4px 8px; }
 
   #meta-lines { font-size: 12px; color: var(--text-dim); line-height: 1.6; overflow-wrap: anywhere; }
   .dsm-note { font-size: 11px; color: #8a5a00; background: #fff6e0; border: 1px solid #f0dca8; border-radius: 6px; padding: 6px 8px; margin-top: 8px; line-height: 1.45; }
@@ -568,7 +559,23 @@
   #btn-autoscale svg, #btn-locate svg { display: block; }
   /* 3D view on / off (top of the eye menu) */
   #btn-tilt { display: flex; align-items: center; justify-content: center; width: 100%; margin: 10px 0 2px; font-weight: 600; }
-  #btn-tilt.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  #btn-tilt.active, #btn-contours.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  #btn-contours { flex: 1 1 0; width: 0; min-width: 0; display: flex; align-items: center; justify-content: center; margin: 0; padding: 0 8px; font-weight: 600; }
+  #settings-card #contour-interval { flex: 1 1 0; width: 0; min-width: 0; margin: 0; padding: 0 8px; border-radius: 8px; }   /* half and half with the button */
+  #settings-card #contour-custom { border-radius: 8px; margin: 0; }
+  /* the eye menu's buttons and boxes all one height, touch or mouse */
+  #btn-tilt, #btn-rotlock, #btn-contours, #settings-card #contour-interval, #settings-card #contour-custom { height: 38px; min-height: 0; padding-top: 0; padding-bottom: 0; }
+  /* eye menu: every section has the same line above it and the same gap either side */
+  #settings-card .section { margin-top: 10px; padding: 10px 0 0; }
+  #settings-card .section > .opt-label:first-child, #settings-card .trio .opt-label { margin-top: 0; }
+  /* sliders: name, slider and value on one line */
+  #settings-card .sliders > div { display: grid; grid-template-columns: 66px minmax(0, 1fr) 34px; column-gap: 8px; align-items: center; }
+  #settings-card .sliders > div[hidden] { display: none; }
+  #settings-card .sliders .opt-label { display: contents; }
+  #settings-card .sliders .opt-label span:first-child { grid-column: 1; grid-row: 1; }
+  #settings-card .sliders .opt-label span:last-child { grid-column: 3; grid-row: 1; text-align: right; font-variant-numeric: tabular-nums; }
+  #settings-card .sliders input[type="range"] { grid-column: 2; grid-row: 1; margin: 0; }
+  #settings-card .sliders > :not([hidden]) ~ div { margin-top: 4px; }   /* gap between sliders, not above the first shown */
   /* Roads / Imagery switches (eye menu) */
   .layer-toggles { display: flex; gap: 8px; margin: 8px 0 2px; }
   .layer-toggles .btn { flex: 1; display: flex; align-items: center; justify-content: center; font-weight: 600; }
@@ -637,9 +644,12 @@
   #result-card.collapsed > :not(#result-title):not(.card-toggle) { display: none !important; }
   #result-card.collapsed #result-title { margin-bottom: 0; }
   body.shooting .card-toggle { display: none; }
-  #point-info { display: grid; grid-template-columns: auto 1fr; gap: 3px 14px; font-size: 13px; margin: 2px 0 2px; }
-  #point-info .k { color: var(--text-dim); }
+  #point-info { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; font-size: 13px; margin: 2px 0 2px; }
+  #point-info .cell { display: flex; flex-direction: column; min-width: 0; }
+  #point-info .cell.wide { grid-column: span 2; }
+  #point-info .k { color: var(--text-dim); font-size: 11px; }
   #point-info .v { font-weight: 600; font-variant-numeric: tabular-nums; }
+  #point-info .v small { font-weight: 500; font-size: 11px; color: var(--text-dim); }
   #result-card #profile-stats { margin-bottom: 6px; }
   #result-card #profile-stats:empty { display: none; }
   #result-card #profile-hover-readout:empty { display: none; }
@@ -709,12 +719,13 @@
   .color-choices button.active { outline: 2px solid var(--accent); outline-offset: 2px; }
   /* eye menu: compact rows so it fits without scrolling */
   #settings-card .opt-label { margin-top: 6px; }
-  .tilt-row { display: flex; align-items: flex-end; gap: 12px; }
-  .tilt-row #btn-tilt { flex: none; width: auto; margin: 0; padding-left: 14px; padding-right: 14px; }
-  .tilt-height { flex: 1; min-width: 0; }
-  .tilt-height .opt-label { margin-top: 0; }
+  .tilt-row { display: flex; gap: 8px; }
+  .tilt-row #btn-tilt, .tilt-row #btn-rotlock { flex: 1 1 0; width: 0; min-width: 0; margin: 0; padding-left: 8px; padding-right: 8px; display: flex; align-items: center; justify-content: center; font-weight: 600; white-space: nowrap; }
+  #btn-rotlock.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  #btn-rotlock:not(.active) .shackle { transform: translate(1.6px, -0.8px) rotate(20deg); transform-origin: 13.8px 11.6px; }   /* open */
+  #btn-compass svg { display: block; }
   .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .trio .seg button { padding: 6px 2px; font-weight: 700; }
+  .trio .seg button { height: 32px; padding: 0 2px; font-weight: 700; display: flex; align-items: center; justify-content: center; }   /* text and icon toggles the same size */
   .trio .ico-only { width: 18px; height: 18px; }
   @media (hover: hover) { .color-item:hover { background: var(--accent-soft); } }
   #settings-card label.check { display: flex; align-items: center; gap: 7px; cursor: pointer; }
@@ -867,9 +878,11 @@
     /* eye menu: two columns so it fits the short screen without scrolling */
     #settings-card {
       width: min(680px, calc(100vw - var(--side-l) - var(--side-r) - var(--sal) - var(--sar) - 16px));
-      column-count: 2; column-gap: 22px;
+      display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0 22px;
     }
-    #settings-card > * { break-inside: avoid; }
+    #settings-card > .set-col { flex: 1 1 0; min-width: 0; }
+    #settings-card > .dsm-note { flex-basis: 100%; }
+    #settings-card .set-col + .set-col > .section:first-child { border-top: 0; margin-top: 0; padding-top: 0; }   /* tops the second column */
   }
   /* Mouse: tool bar buttons light up under the pointer */
   @media (hover: hover) and (pointer: fine) {
@@ -1199,6 +1212,17 @@
       </svg>
     </button>
     <div id="scalebar"><span id="scale-label">&mdash;</span><div class="bar" id="scale-bar-inner" style="height:70px"></div></div>
+    <button id="btn-compass" class="corner-btn" title="Turn the map north up" aria-label="North up" hidden>
+      <svg viewBox="0 0 44 44" width="40" height="40" aria-hidden="true"><g id="compass-g">
+        <circle cx="22" cy="22" r="19.5" fill="none" stroke="currentColor" stroke-width="1.8"/>
+        <g font-size="7.5" font-weight="800" fill="currentColor" text-anchor="middle">
+          <text x="22" y="10.6">N</text><text x="22" y="38.6">S</text><text x="36" y="24.6">E</text><text x="8" y="24.6">W</text>
+        </g>
+        <path d="M22 12.5l3.4 9.5h-6.8z" fill="#e5383b"/>
+        <path d="M22 31.5l3.4-9.5h-6.8z" fill="currentColor"/>
+        <circle cx="22" cy="22" r="2" fill="var(--btn-bg, #fff)" stroke="currentColor" stroke-width="1.2"/>
+      </g></svg>
+    </button>
   </div>
   <button id="share-pill" hidden></button>
   <div id="toast" hidden></div>
@@ -1219,23 +1243,19 @@
     </div>
   </div>
   <div id="settings-card" class="corner-card" hidden>
-    <!-- 3D view on / off, with its height multiplier beside it -->
+    <div class="set-col">   <!-- first column on short screens -->
+    <!-- 3D view and rotation lock, side by side -->
     <div class="tilt-row">
       <button class="btn" id="btn-tilt" title="Tilt the map into a 3D view (two fingers up / down, or Shift + mouse wheel, change the tilt)">
         <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 17.5l5-9h9l5 9z"/><path d="M6 13l3-2.5 3 2 3-3 3.5 3.5"/></svg>3D view</button>
-      <div class="tilt-height" title="3D height multiplier">
-        <div class="opt-label"><span>Height</span><span id="exag-val">5&times;</span></div>
-        <input type="range" id="exag-slider" min="1" max="25" value="5">
-      </div>
-    </div>
-    <div id="imagery-opts">
-      <div class="opt-label"><span>Satellite strength</span><span id="imagery-val">100%</span></div>
-      <input type="range" id="imagery-alpha" min="10" max="100" value="100">
+      <button class="btn" id="btn-rotlock" title="Rotation lock: keep north up (no turning with two fingers, Alt + wheel or the GPS)">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 12a8.5 8.5 0 1 1-2.5-6"/><path d="M18.6 2.4v3.9h-3.9"/><rect x="8.7" y="11.6" width="6.6" height="5.2" rx="1" stroke-width="1.7"/><path class="shackle" d="M10.2 11.6v-1.4a1.8 1.8 0 0 1 3.6 0v1.4" stroke-width="1.7"/></svg>Rotation lock</button>
     </div>
 
     <div class="section">
       <div class="row">
-        <label class="check"><input type="checkbox" id="chk-contours">Contour lines</label>
+        <button class="btn" id="btn-contours" aria-pressed="false" title="Contour lines on / off">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5c2.5-2 4.5-2 6.5 0s4 2 6 0 3.5-2 5.5-.5"/><path d="M3 12.5c2.5-2 4.5-2 6.5 0s4 2 6 0 3.5-2 5.5-.5"/><path d="M3 17.5c2.5-2 4.5-2 6.5 0s4 2 6 0 3.5-2 5.5-.5"/></svg>Contour lines</button>
         <select id="contour-interval" title="Height between contour lines">
           <option value="auto">Auto</option>
           <option value="0.1">0.1 m</option>
@@ -1261,22 +1281,30 @@
         <div class="range-handle" id="handle-max" title="Highest colour"></div>
       </div>
       <div class="range-labels"><span id="data-min-label">&mdash;</span><span id="data-max-label">&mdash;</span></div>
-      <div class="range-values">
-        <input type="number" id="input-min" step="0.1"><span class="sep">&ndash;</span><input type="number" id="input-max" step="0.1"><span class="u-len" style="font-size:11px;color:var(--text-dim)">m</span>
-        <button class="btn" id="btn-reset-range" title="Spread the colours over the whole file's height range">Reset</button>
-      </div>
     </div>
 
+    </div>
+    <div class="set-col">   <!-- second column on short screens -->
+    <div class="section sliders">
+    <div id="exag-opts" title="3D height multiplier" hidden>
+      <div class="opt-label"><span>3D height</span><span id="exag-val">5&times;</span></div>
+      <input type="range" id="exag-slider" min="1" max="25" value="5">
+    </div>
+    <div id="imagery-opts">
+      <div class="opt-label"><span>Satellite</span><span id="imagery-val">100%</span></div>
+      <input type="range" id="imagery-alpha" min="10" max="100" value="100">
+    </div>
     <div id="relief-opts">
-      <div class="opt-label"><span>Relief shading</span><span id="relief-val">50%</span></div>
+      <div class="opt-label"><span>Relief</span><span id="relief-val">50%</span></div>
       <input type="range" id="relief-slider" min="0" max="100" value="50">
     </div>
     <div>
-      <div class="opt-label"><span>Contour line strength</span><span id="contour-alpha-val">85%</span></div>
+      <div class="opt-label"><span>Contours</span><span id="contour-alpha-val">85%</span></div>
       <input type="range" id="contour-alpha" min="10" max="100" value="85">
     </div>
+    </div>
     <!-- Theme, units and which side the buttons sit on, side by side -->
-    <div class="trio">
+    <div class="section trio">
       <div>
         <div class="opt-label"><span>Theme</span></div>
         <div class="seg small" id="theme-toggle">
@@ -1301,6 +1329,7 @@
     </div>
     <!-- Colours: one box per thing that can be coloured; tapping a box opens its
          choices across the same row -->
+    <div class="section">
     <div class="opt-label"><span>Colours</span></div>
     <div class="color-row" id="color-row">
       <button class="color-item" data-item="contours" title="Contour line colour"><span class="color-name">Contours</span><span class="color-box"></span></button>
@@ -1308,6 +1337,8 @@
       <button class="color-item" data-item="roads" title="Road colour"><span class="color-name">Roads</span><span class="color-box"></span></button>
       <button class="color-item" data-item="gps" title="My location dot and direction cone"><span class="color-name">GPS</span><span class="color-box"></span></button>
       <div class="color-choices" id="color-choices" hidden></div>
+    </div>
+    </div>
     </div>
   </div>
   <!-- Logo menu: file name, home (start screen), file information -->
@@ -3207,12 +3238,23 @@ async function loadFiles(fileList, { remember = true, emptyMsg = '' } = {}) {
     console.log(`[terrain] decode ${(tDecoded - tStart).toFixed(0)} ms, prepare+upload ${(tReady - tDecoded).toFixed(0)} ms, total ${(tReady - tStart).toFixed(0)} ms`);
     window.__terrainLoadMs = { decode: tDecoded - tStart, prepare: tReady - tDecoded, total: tReady - tStart };
 
-    $('start').hidden = true;
+    // The map is laid out under the start screen, which stays up until the
+    // satellite and roads have loaded too, so the first thing you see is the
+    // finished map (not the bare hillshade for a moment). Gives up waiting
+    // after 30 s; they then keep loading on the map.
     $('app').hidden = false;
-    $('load-progress').hidden = true;
     $('btn-open').disabled = false;
-    onMapShown(data, tReady - tStart);
+    const layers = onMapShown(data, tReady - tStart);
     if (remember) rememberFiles(files);
+    const fetching = ['imagery', 'roads'].filter((k) => layerJobs[k]);
+    if (fetching.length) {
+      showLoadProgress(`Loading ${fetching.map((k) => (k === 'imagery' ? 'satellite' : 'roads')).join(' and ')}…`, 1);
+      $('toast').hidden = true;
+      await Promise.race([layers, new Promise((r) => setTimeout(r, 30000))]);
+      await nextFrame();   // the layers drawn before the map is shown
+    }
+    $('start').hidden = true;
+    $('load-progress').hidden = true;
   } catch (err) {
     console.error(err);
     if (pool) pool.terminate();
@@ -4249,9 +4291,10 @@ function onAnalysisMessage(e) {
 const viewport = $('viewport');
 const overlay = $('overlay');
 const overlayG = $('overlay-g');
-// rot: the map is turned clockwise on screen by this many radians so true
-// north points up (see gridConvergence).
-const view = { scale: 1, minScale: 0.01, maxScale: 50, originX: 0, originY: 0, rot: 0 };
+// rot: the map is turned clockwise on screen by this many radians; north: the
+// turn that puts true north up (see gridConvergence). rot - north is how far the
+// user (two fingers, Alt + wheel) or the GPS (heading up) has turned it.
+const view = { scale: 1, minScale: 0.01, maxScale: 50, originX: 0, originY: 0, rot: 0, north: 0 };
 
 // Map px <-> screen CSS px for the flat view (scale, then rotate, then shift).
 function viewToScreen(x, y) {
@@ -4271,6 +4314,49 @@ function zoomAbout(mx, my, ns) {
   view.originX += mx - q.x;
   view.originY += my - q.y;
 }
+// Turn the map to rot keeping the map point under screen (mx, my) in place.
+function rotateAbout(mx, my, rot) {
+  const w = screenToView(mx, my);
+  view.rot = rot;
+  const q = viewToScreen(w.x, w.y);
+  view.originX += mx - q.x;
+  view.originY += my - q.y;
+}
+const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+// The map can be turned unless rotation is locked; while the GPS keeps you
+// centred the map turns itself so your heading is up.
+const canTwist = () => !settings.rotLock && !locFollow;
+// Compass under the scale bar: shown while north isn't up; tap to turn it back.
+function updateCompass() {
+  const off = wrapAngle(view.rot - view.north);
+  $('btn-compass').hidden = !map || Math.abs(off) < 0.009;   // half a degree
+  $('compass-g').setAttribute('transform', `rotate(${(off * 180 / Math.PI).toFixed(2)} 22 22)`);
+}
+let northAnim = 0;
+function resetNorth() {
+  cancelAnimationFrame(northAnim);
+  const from = view.rot, d = wrapAngle(view.north - from), t0 = performance.now();
+  const step = (now) => {
+    const g = Math.min(1, (now - t0) / 350), e = g * (2 - g);
+    const ins = fitInsets();
+    rotateAbout(viewport.clientWidth / 2, ins.top + (viewport.clientHeight - ins.top - ins.bottom) / 2, from + d * e);
+    applyView();
+    if (g < 1) northAnim = requestAnimationFrame(step);
+  };
+  northAnim = requestAnimationFrame(step);
+}
+$('btn-compass').addEventListener('click', () => {
+  if (locFollow && !settings.rotLock) setFollow(false);   // heading-up would turn it straight back
+  resetNorth();
+});
+function setRotLock(on) {
+  settings.rotLock = on;
+  $('btn-rotlock').classList.toggle('active', on);
+  $('btn-rotlock').setAttribute('aria-pressed', on);
+  try { localStorage.setItem('terrainRotLock', on ? '1' : ''); } catch (e) { /* storage may be blocked */ }
+  if (on && map) resetNorth();
+}
+$('btn-rotlock').addEventListener('click', () => setRotLock(!settings.rotLock));
 // Map-px box covering the screen area (0,0)-(vw,vh).
 function viewBounds(vw, vh) {
   const pts = [screenToView(0, 0), screenToView(vw, 0), screenToView(0, vh), screenToView(vw, vh)];
@@ -4419,10 +4505,56 @@ function lambertInverse(E, N) {
 // locFollow: the map stays centred on you (zoom still works, panning doesn't)
 let locWatch = null, locFix = null, locFollow = false;
 let locCone = null;   // the direction cone as last drawn, { len, ang } (for pictures)
+// Smoothing: fixes arrive about once a second, so between them the dot keeps going
+// along your speed and heading (prediction), and each new fix is eased in over most
+// of the gap to the next one (glide) instead of jumping. locFix is what's drawn.
+let locRaw = null;    // latest fix as the phone gave it (Point tool readout)
+let locTrack = null;  // { lat, lon, vN, vE (m/s), t (ms), offN, offE (m from the fix to where the dot was), glide (ms) }
+let locTimes = [];    // arrival times of recent fixes, for the update rate
+let locAnim = 0;
+const LOC_PREDICT_MS = 2500;   // stop predicting when fixes stop coming
+const M_PER_DEG = 111320;
+function locShown(now) {
+  const k = locTrack, age = Math.max(0, now - k.t), dt = Math.min(age, LOC_PREDICT_MS) / 1000;
+  const g = Math.min(1, age / k.glide), fade = 1 - g * g * (3 - 2 * g);
+  const n = k.vN * dt + k.offN * fade, e = k.vE * dt + k.offE * fade;
+  return { lat: k.lat + n / M_PER_DEG, lon: k.lon + e / (M_PER_DEG * Math.cos(k.lat * Math.PI / 180)) };
+}
+let locTurning = false, locLastStep = 0;
+function locStep(now) {
+  if (!locTrack || !locFix || !map) return;
+  const ll = locShown(now), pt = lonLatToMap(ll.lat, ll.lon, map);
+  if (!pt) return;
+  Object.assign(locFix, { x: pt.x, y: pt.y, lat: ll.lat, lon: ll.lon });
+  // locked on you: the map turns (smoothly) so the way you're going is up
+  const dt = Math.min(0.1, Math.max(0, (now - locLastStep) / 1000));
+  locLastStep = now;
+  locTurning = false;
+  if (locFollow && !settings.rotLock && locRaw && locRaw.speed > 1 && locRaw.heading === locRaw.heading) {
+    const d = wrapAngle(view.north - locRaw.heading * Math.PI / 180 - view.rot);
+    view.rot += d * Math.min(1, dt * 3);
+    locTurning = Math.abs(d) > 0.003;
+  }
+  if (locFollow) applyView();
+  else if (settings.tilt3d) requestRender();   // render3D places the dot
+  else { updateLocDot(); if (profileMode === 'point') positionMapLabels(); }
+}
+function locFrame(now) {
+  locAnim = 0;
+  if (!locTrack || locWatch === null) return;
+  locStep(now);
+  const age = now - locTrack.t;
+  if (locTurning || age < locTrack.glide || ((locTrack.vN || locTrack.vE) && age < LOC_PREDICT_MS)) locAnim = requestAnimationFrame(locFrame);
+}
+function locRate() {   // fixes per second over the last few
+  const n = locTimes.length;
+  return n < 3 ? NaN : (n - 1) * 1000 / (locTimes[n - 1] - locTimes[0]);
+}
 function setLocating(on) {
   if (!on) {
     if (locWatch !== null) navigator.geolocation.clearWatch(locWatch);
-    locWatch = null; locFix = null;
+    locWatch = null; locFix = null; locRaw = null; locTrack = null; locTimes = [];
+    cancelAnimationFrame(locAnim); locAnim = 0;
     setFollow(false);
     $('btn-locate').classList.remove('active');
     updateLocDot();
@@ -4449,8 +4581,24 @@ function setLocating(on) {
     if (!prev || Math.hypot(c.latitude - prev.lat, c.longitude - prev.lon) > 2e-5 || pos.timestamp - prev.t > 10000) {
       prev = { lat: c.latitude, lon: c.longitude, t: pos.timestamp };
     }
-    locFix = { x: pt.x, y: pt.y, acc: c.accuracy, lat: c.latitude, lon: c.longitude,
+    locRaw = { x: pt.x, y: pt.y, acc: c.accuracy, lat: c.latitude, lon: c.longitude,
       speed: speed >= 0 ? speed : 0, heading: heading >= 0 ? heading : NaN };
+    // the smoothed track: carry on from where the dot is now, heading for this fix
+    const now = performance.now();
+    locTimes.push(now);
+    if (locTimes.length > 11) locTimes.shift();
+    const h = locRaw.heading * Math.PI / 180, moving = locRaw.speed > 0.6 && h === h;
+    const mE = M_PER_DEG * Math.cos(c.latitude * Math.PI / 180);
+    let offN = 0, offE = 0;
+    if (locTrack && locFix) {
+      const cur = locShown(now);
+      offN = (cur.lat - c.latitude) * M_PER_DEG; offE = (cur.lon - c.longitude) * mE;
+      if (Math.hypot(offN, offE) > 150) offN = offE = 0;   // a big jump: go straight there
+    }
+    const gap = locTimes.length > 1 ? now - locTimes[locTimes.length - 2] : 1000;
+    locTrack = { lat: c.latitude, lon: c.longitude, vN: moving ? locRaw.speed * Math.cos(h) : 0, vE: moving ? locRaw.speed * Math.sin(h) : 0,
+      t: now, offN, offE, glide: Math.min(1000, Math.max(200, gap * 0.8)) };
+    locFix = { ...locRaw };
     if (profileMode === 'point') renderProfileChart();
     if (first) {
       first = false;
@@ -4461,12 +4609,13 @@ function setLocating(on) {
         showToast(`You're ${formatDist(Math.hypot(dx, dy))} outside this map`);
       }
     }
-    if (locFollow) applyView();   // re-centres on the new fix
-    updateLocDot();
+    locStep(now);
+    cancelAnimationFrame(locAnim);
+    locAnim = requestAnimationFrame(locFrame);
   }, (err) => {
     setLocating(false);
     showToast(err.code === 1 ? 'Location is turned off for this app (Settings › Privacy › Location Services)' : 'Could not find your location');
-  }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 });
+  }, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 });   // maximumAge 0: never an old cached fix
   onPointGpsChange();
 }
 
@@ -4577,6 +4726,7 @@ const settings = {
   toolLine: 'auto',
   tilt3d: false,     // tilted 3D view (bottom bar button)
   tiltDeg: 50,       // camera tilt from straight down, degrees
+  rotLock: false,    // map locked north up (eye menu lock button)
   exag: 5,           // height multiplier in the 3D view
   relief: 0.5,
   rangeMin: 0, rangeMax: 1,
@@ -4588,6 +4738,8 @@ const settings = {
 };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('terrainLayers') || '{}')); } catch (e) { /* storage may be blocked */ }
 try { if (localStorage.getItem('terrainUnits') === 'imperial') settings.units = 'imperial'; } catch (e) { /* storage may be blocked */ }
+try { settings.rotLock = localStorage.getItem('terrainRotLock') === '1'; } catch (e) { /* storage may be blocked */ }
+$('btn-rotlock').classList.toggle('active', settings.rotLock);
 let dataMin = 0, dataMax = 1;
 let rangeUserSet = false;   // colour range chosen by the user (don't auto-fit over it)
 
@@ -4599,11 +4751,12 @@ function applyView() {
   overlayG.setAttribute('transform', settings.tilt3d ? '' : `translate(${view.originX} ${view.originY}) rotate(${view.rot * 180 / Math.PI}) scale(${view.scale})`);
   if (!settings.tilt3d) { updateProfileMarkerScale(); positionMapLabels(); updateLocDot(); }
   updateScaleBar();
+  updateCompass();
   requestRender();
 }
 
 // Shown on the start screen and in File information. Keep in step with CACHE in sw.js.
-const APP_VERSION = 43;
+const APP_VERSION = 46;
 $('start-version').textContent = 'Version ' + APP_VERSION;
 
 const POINT_R = window.matchMedia('(pointer: coarse)').matches ? 10 : 6;   // tool point size, screen px
@@ -4740,6 +4893,15 @@ viewport.addEventListener('wheel', (e) => {
     requestRender();
     return;
   }
+  // Alt + wheel turns the map (about the pointer; in 3D about the centre)
+  if (e.altKey) {
+    if (!canTwist()) return;
+    const d = (e.deltaY || e.deltaX) * (e.deltaMode === 1 ? 33 : 1);
+    const ax = settings.tilt3d ? rect.width / 2 : e.clientX - rect.left, ay = settings.tilt3d ? rect.height / 2 : e.clientY - rect.top;
+    rotateAbout(ax, ay, view.rot + d * 0.0015);   // about 9 degrees a notch
+    applyView();
+    return;
+  }
   // in 3D, zoom about the centre of the view (the camera target)
   const mx = settings.tilt3d ? rect.width / 2 : e.clientX - rect.left, my = settings.tilt3d ? rect.height / 2 : e.clientY - rect.top;
   const dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
@@ -4788,6 +4950,8 @@ window.addEventListener('keydown', (e) => {
   if (starting) requestAnimationFrame(panLoop);
 });
 window.addEventListener('keyup', (e) => { panKeys.delete(e.key); });
+// iPhone / iPad: Safari can still pinch-zoom the page itself; only the map zooms
+for (const ev of ['gesturestart', 'gesturechange']) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
 window.addEventListener('blur', () => panKeys.clear());
 
 // Touch: one finger pans (a tap adds a point in draw mode); two fingers pinch-zoom
@@ -4803,6 +4967,7 @@ function startTouch(touches) {
       mode: 'pinch',
       dist: Math.max(1, Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY)),
       midX: (a.clientX + b.clientX) / 2, midY: (a.clientY + b.clientY) / 2,
+      ang: Math.atan2(b.clientY - a.clientY, b.clientX - a.clientX), twist: 0, turning: false,
     };
   } else touchState = null;
 }
@@ -4837,6 +5002,20 @@ viewport.addEventListener('touchmove', (e) => {
       zoomAbout(touchState.midX - rect.left, touchState.midY - rect.top, ns);
       view.originX += midX - touchState.midX;
       view.originY += midY - touchState.midY;
+    }
+    // twisting two fingers turns the map, once they've turned ~10 degrees
+    // (so a plain pinch doesn't turn it by accident)
+    const ang = Math.atan2(b.clientY - a.clientY, b.clientX - a.clientX), dAng = wrapAngle(ang - touchState.ang);
+    touchState.ang = ang;
+    if (canTwist()) {
+      touchState.twist += dAng;
+      let turn = 0;
+      if (touchState.turning) turn = dAng;
+      else if (Math.abs(touchState.twist) > 0.17) { touchState.turning = true; turn = touchState.twist; }
+      if (turn) {
+        if (settings.tilt3d) rotateAbout(rect.width / 2, rect.height / 2, view.rot + turn);
+        else rotateAbout(midX - rect.left, midY - rect.top, view.rot + turn);
+      }
     }
     touchState.dist = dist; touchState.midX = midX; touchState.midY = midY;
     applyView();
@@ -5048,11 +5227,17 @@ function setView(v) {
   requestRender();
 }
 
-$('chk-contours').addEventListener('change', (e) => { settings.contours = e.target.checked; requestRender(); });
+function setContours(on) {
+  settings.contours = on;
+  $('btn-contours').classList.toggle('active', on);
+  $('btn-contours').setAttribute('aria-pressed', on);
+  requestRender();
+}
+$('btn-contours').addEventListener('click', () => setContours(!settings.contours));
 $('contour-interval').addEventListener('change', (e) => {
   $('contour-custom').hidden = e.target.value !== 'custom';
   if (e.target.value === 'custom') $('contour-custom').focus();
-  if (!settings.contours) { settings.contours = true; $('chk-contours').checked = true; }
+  if (!settings.contours) setContours(true);
   requestRender();
 });
 $('contour-custom').addEventListener('input', requestRender);
@@ -5214,8 +5399,6 @@ function updateRangeUI() {
   $('dim-left').style.width = Math.max(0, minPx - 6) + 'px';
   $('dim-right').style.left = maxPx + 'px';
   $('dim-right').style.width = Math.max(0, (trackW + 6) - maxPx) + 'px';
-  $('input-min').value = (settings.rangeMin * lenK()).toFixed(1);
-  $('input-max').value = (settings.rangeMax * lenK()).toFixed(1);
   $('data-min-label').textContent = fmtElev(dataMin, 1);
   $('data-max-label').textContent = fmtElev(dataMax, 1);
 }
@@ -5250,19 +5433,6 @@ function setupHandle(handleEl, isMin) {
 }
 setupHandle($('handle-min'), true);
 setupHandle($('handle-max'), false);
-$('input-min').addEventListener('change', (e) => {
-  let v = parseFloat(e.target.value) / lenK();
-  if (isNaN(v)) v = dataMin;
-  rangeUserSet = true;
-  setRange(Math.max(dataMin - 1000, Math.min(v, settings.rangeMax - 0.01)), settings.rangeMax);
-});
-$('input-max').addEventListener('change', (e) => {
-  let v = parseFloat(e.target.value) / lenK();
-  if (isNaN(v)) v = dataMax;
-  rangeUserSet = true;
-  setRange(settings.rangeMin, Math.min(dataMax + 1000, Math.max(v, settings.rangeMin + 0.01)));
-});
-$('btn-reset-range').addEventListener('click', () => { rangeUserSet = false; setRange(dataMin, dataMax); });
 function fitColoursToView() {
   const vw = viewport.clientWidth, vh = viewport.clientHeight;
   callAnalysis('minmax', viewBounds(vw, vh)).then((r) => {
@@ -5409,18 +5579,20 @@ async function fetchLayer(kind) {
   layerTex[kind] = { tex, key, w, h };
 }
 
-// Fetch whatever is switched on and not loaded yet for the open map.
+// Fetch whatever is switched on and not loaded yet for the open map. Returns a
+// promise that settles when those fetches are done (straight away if none).
 function refreshLayers() {
   updateLayerUI();
-  if (!map || !gl || map.noGeoref) return;
+  const none = Promise.resolve();
+  if (!map || !gl || map.noGeoref) return none;
   const key = `${map.ox},${map.oy},${map.W},${map.H}`;
   const want = ['roads', 'imagery'].filter((k) => settings[k] && !(layerTex[k] && layerTex[k].key === key) && !layerJobs[k]);
-  if (!want.length) { requestRender(); return; }
-  if (!mapProjection(map)) { showToast("This map's projection doesn't support roads or imagery"); return; }
+  if (!want.length) { requestRender(); return none; }
+  if (!mapProjection(map)) { showToast("This map's projection doesn't support roads or imagery"); return none; }
   if (want.includes('imagery') && !inSaskatchewan(mapToLonLat(map.W / 2, map.H / 2, map))) {
     showToast('Imagery is only available in Saskatchewan for now');
     want.splice(want.indexOf('imagery'), 1);
-    if (!want.length) return;
+    if (!want.length) return none;
   }
   const names = want.map((k) => (k === 'roads' ? 'roads' : 'imagery')).join(' and ');
   showToast(`Loading ${names}…`);
@@ -5437,6 +5609,7 @@ function refreshLayers() {
         updateLayerUI();
       });
   }
+  return Promise.allSettled(want.map((k) => layerJobs[k]));
 }
 function dropLayers() {
   for (const k of ['roads', 'imagery']) {
@@ -5499,6 +5672,7 @@ setBarSide(document.documentElement.getAttribute('data-bar') === 'left' ? 'left'
 function setTilt(on) {
   settings.tilt3d = on;
   $('btn-tilt').classList.toggle('active', on);
+  $('exag-opts').hidden = !on;   // the height slider only matters in 3D
   document.body.classList.toggle('tilted', on);
   zRef3d = null; lift3d = null;
   applyView();
@@ -6987,17 +7161,20 @@ function paintDecorations(ctx, W, H) {
   ctx.textAlign = 'left';
   ctx.fillText(caption, 26, 30);
 
-  // North arrow (top-right) - the map is always north-up
+  // North arrow (top-right), turned with the map
   const nx = W - 36, ny = 40;
   ctx.beginPath(); ctx.arc(nx, ny, 20, 0, Math.PI * 2);
   ctx.fillStyle = 'rgba(255,255,255,0.95)'; ctx.fill();
   ctx.strokeStyle = '#d7d2c8'; ctx.lineWidth = 1; ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(nx, ny - 14); ctx.lineTo(nx + 7, ny + 4); ctx.lineTo(nx, ny); ctx.closePath();
+  ctx.save();
+  ctx.translate(nx, ny); ctx.rotate(view.rot - view.north);
+  ctx.beginPath(); ctx.moveTo(0, -14); ctx.lineTo(7, 4); ctx.lineTo(0, 0); ctx.closePath();
   ctx.fillStyle = '#2a2620'; ctx.fill();
-  ctx.beginPath(); ctx.moveTo(nx, ny - 14); ctx.lineTo(nx - 7, ny + 4); ctx.lineTo(nx, ny); ctx.closePath();
+  ctx.beginPath(); ctx.moveTo(0, -14); ctx.lineTo(-7, 4); ctx.lineTo(0, 0); ctx.closePath();
   ctx.fillStyle = '#9a9488'; ctx.fill();
   ctx.font = `700 10px ${font}`; ctx.fillStyle = '#2a2620'; ctx.textAlign = 'center';
-  ctx.fillText('N', nx, ny + 12);
+  ctx.fillText('N', 0, 12);
+  ctx.restore();
 
   // Scale bar (bottom-right)
   const label = $('scale-label').textContent;
@@ -7107,29 +7284,30 @@ const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 function renderPointInfo() {
   $('profile-stats').innerHTML = '';
   const gps = pointGps();
-  const p = gps ? locFix : profilePoints[0];
+  const p = gps ? locRaw : profilePoints[0];
   const el = $('point-info');
   if (!p || !map) { el.innerHTML = gps ? '<span class="k">Waiting for GPS…</span>' : ''; return; }
   const ll = gps ? { lat: p.lat, lon: p.lon } : mapToLonLat(p.x, p.y, map);
   const inside = p.x >= 0 && p.y >= 0 && p.x < map.W && p.y < map.H;
-  const rows = [];
-  if (ll) {
-    const [la, lo] = fmtLatLon(ll.lat, ll.lon);
-    rows.push(['Latitude', la], ['Longitude', lo]);
-  } else {
-    rows.push(['Easting', (map.ox + p.x * map.px).toFixed(1)], ['Northing', (map.oy - p.y * map.py).toFixed(1)]);
-  }
+  // compact cells, label over value: GPS in two rows (speed, heading, elevation /
+  // position, accuracy), a tapped point in one (elevation, position)
   const key = gps ? 'gps' : `${p.x},${p.y}`;
   const ev = pointElev.key === key ? pointElev.v : NaN;
-  rows.push(['Elevation', !inside ? 'off the map' : ev === ev ? fmtElev(ev) : '…']);
+  const pos = ll ? fmtLatLon(ll.lat, ll.lon).join(', ')
+    : `E ${(map.ox + p.x * map.px).toFixed(1)}, N ${(map.oy - p.y * map.py).toFixed(1)}`;
+  const cells = [];   // [label, value, wide, small note]
+  const elevCell = ['Elevation', !inside ? 'off the map' : ev === ev ? fmtElev(ev) : '…'];
   if (gps) {
-    const kmh = p.speed * 3.6;
-    rows.push(['Speed', imperial() ? `${(kmh / 1.609344).toFixed(1)} mph` : `${kmh.toFixed(1)} km/h`]);
-    rows.push(['Heading', p.speed > 0.6 && p.heading === p.heading
+    const kmh = p.speed * 3.6, hz = locRate();
+    cells.push(['Speed', imperial() ? `${(kmh / 1.609344).toFixed(1)} mph` : `${kmh.toFixed(1)} km/h`]);
+    cells.push(['Heading', p.speed > 0.6 && p.heading === p.heading
       ? `${Math.round(p.heading) % 360}° ${COMPASS[Math.round(p.heading / 45) % 8]}` : '—']);
-    rows.push(['Accuracy', '± ' + formatDist(p.acc)]);
-  }
-  el.innerHTML = rows.map(([k, v]) => `<span class="k">${k}</span><span class="v">${escapeHtml(v)}</span>`).join('');
+    cells.push(elevCell);
+    cells.push(['Position', pos, true]);
+    cells.push(['Accuracy', '± ' + formatDist(p.acc), false, hz === hz ? `${hz < 2 ? hz.toFixed(1) : Math.round(hz)}/s` : '']);
+  } else cells.push(elevCell, ['Position', pos, true]);
+  el.innerHTML = cells.map(([k, v, wide, note]) => `<div class="cell${wide ? ' wide' : ''}"><span class="k">${k}</span>`
+    + `<span class="v">${escapeHtml(v)}${note ? ` <small title="GPS updates per second">${escapeHtml(note)}</small>` : ''}</span></div>`).join('');
   // full-resolution elevation from the analysis worker, one request at a time
   if (inside && !pointElevBusy && (gps || ev !== ev)) {
     pointElevBusy = true;
@@ -7481,7 +7659,7 @@ function onMapShown(data, ms) {
     qOff: data.qOff, qScale: data.qScale, isDsm: data.isDsm,
     epsg: m.epsg, crsName: m.crsName, tm: m.tm,   // for the GPS location dot and latitude / longitude
   };
-  view.rot = gridConvergence(m);   // true north up, so grid roads and section lines run straight
+  view.rot = view.north = gridConvergence(m);   // true north up, so grid roads and section lines run straight
   dataMin = data.dataMin; dataMax = data.dataMax;
   settings.rangeMin = dataMin; settings.rangeMax = dataMax;
   rangeUserSet = false;
@@ -7508,7 +7686,7 @@ function onMapShown(data, ms) {
     `Area: ${widthKm} &times; ${heightKm} ${sizeU} at ${+m.px.toFixed(3)} m pixels (${m.W.toLocaleString()} &times; ${m.H.toLocaleString()})<br>` +
     `Elevation: ${fmtElev(dataMin)} &ndash; ${fmtElev(dataMax)}<br>` +
     `Projection: ${escapeHtml(crs)}<br>` +
-    (Math.abs(view.rot) > 1e-4 ? `Turned ${Math.abs(view.rot * 180 / Math.PI).toFixed(2)}&deg; so true north is up<br>` : '') +
+    (Math.abs(view.north) > 1e-4 ? `Turned ${Math.abs(view.north * 180 / Math.PI).toFixed(2)}&deg; so true north is up<br>` : '') +
     (m.step > 1 ? `Detail: every ${m.step === 2 ? '2nd' : m.step === 3 ? '3rd' : m.step + 'th'} pixel (${fmtM(m.px)}; the file is ${fmtM(m.fullPx)}) so it fits in this device's memory<br>` : '') +
     `Opened in ${(ms / 1000).toFixed(1)} s<br>` +
     `App version ${APP_VERSION}`;
@@ -7535,7 +7713,7 @@ function onMapShown(data, ms) {
   // every map opens on satellite with roads (satellite only covers Saskatchewan)
   settings.roads = !map.noGeoref && !!mapProjection(map);
   settings.imagery = settings.roads && inSaskatchewan(mapToLonLat(map.W / 2, map.H / 2, map));
-  refreshLayers();
+  return refreshLayers();   // settles when the satellite / roads have loaded (or failed)
 }
 
 function escapeHtml(s) {
