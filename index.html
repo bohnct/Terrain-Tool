@@ -176,19 +176,19 @@
   .dl-actions .reopen-btn { margin-top: 0; width: auto; flex: 1; }
   .dl-actions .big-btn { flex: 2; }
   /* government data links: small, out of the way */
-  /* layers that come down with the elevation: main | sub, as toggles */
-  #fetch-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 8px; margin-top: 14px; }
-  .fetch-ico { width: 18px; height: 18px; fill: none; stroke: var(--text-dim); stroke-width: 1.8; stroke-linejoin: round; }
-  .fetch-group { display: flex; border: 1px solid var(--panel-border); border-radius: 8px; overflow: hidden; }
+  /* Download area: layers that come down with the elevation, main | sub, as toggles */
+  #fetch-row { display: flex; gap: 8px; margin: 0 0 12px; }
+  .fetch-group { flex: 1; display: flex; border: 1px solid var(--panel-border); border-radius: 8px; overflow: hidden; }
   .fetch-group button {
-    padding: 6px 9px; border: none; background: none; font: inherit; font-size: 12px; font-weight: 700;
+    flex: 1; padding: 11px 2px; border: none; background: #fff; font: inherit; font-size: 14px; font-weight: 700;
     color: var(--text-dim); cursor: pointer;
   }
+  :root[data-theme="dark"] .fetch-group button { background: #2a2c28; }
   .fetch-group button + button { border-left: 1px solid var(--panel-border); }
   .fetch-group button.active { background: var(--accent); color: #fff; }
-  .fetch-group.sub button { font-weight: 600; font-size: 11.5px; }
+  .fetch-group.sub button { font-weight: 600; }
   .fetch-group.sub button.active { background: var(--accent-soft); color: var(--accent); }
-  :root[data-theme="dark"] .fetch-group.sub button.active { color: #8fd197; }
+  :root[data-theme="dark"] .fetch-group.sub button.active { background: var(--accent-soft); color: #8fd197; }
   .start-links { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px 16px; margin-top: 18px; }
   .start-links a { font-size: 12px; color: var(--text-dim); text-decoration: none; padding: 4px 0; }
   @media (hover: hover) { .start-links a:hover { color: var(--accent); text-decoration: underline; } }
@@ -572,12 +572,12 @@
   #btn-autoscale svg, #btn-locate svg { display: block; }
   /* 3D view on / off (top of the eye menu) */
   #btn-tilt { display: flex; align-items: center; justify-content: center; width: 100%; margin: 10px 0 2px; font-weight: 600; }
-  #btn-tilt.active, #btn-contours.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  #btn-tilt.active, #btn-contours.active, #btn-legend.active { background: var(--accent); border-color: var(--accent); color: #fff; }
   #btn-contours { flex: 1 1 0; width: 0; min-width: 0; display: flex; align-items: center; justify-content: center; margin: 0; padding: 0 8px; font-weight: 600; }
   #settings-card #contour-interval { flex: 1 1 0; width: 0; min-width: 0; margin: 0; padding: 0 8px; border-radius: 8px; }   /* half and half with the button */
   #settings-card #contour-custom { border-radius: 8px; margin: 0; }
   /* the eye menu's buttons and boxes all one height, touch or mouse */
-  #btn-tilt, #btn-rotlock, #btn-contours, #settings-card #contour-interval, #settings-card #contour-custom { height: 38px; min-height: 0; padding-top: 0; padding-bottom: 0; }
+  #btn-tilt, #btn-rotlock, #btn-contours, #btn-legend, #settings-card #contour-interval, #settings-card #contour-custom { height: 38px; min-height: 0; padding-top: 0; padding-bottom: 0; }
   /* eye menu: every section has the same line above it and the same gap either side */
   #settings-card .section { margin-top: 10px; padding: 10px 0 0; }
   #settings-card .section > .opt-label:first-child, #settings-card .trio .opt-label { margin-top: 0; }
@@ -607,6 +607,19 @@
   :root[data-theme="dark"] .layer-tile.active { color: #8fd197; }
   .layer-thumb { display: block; width: 58px; height: 46px; border-radius: 8px; overflow: hidden; box-shadow: 0 0 0 1px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.18); }
   #layers-card { padding: 10px 10px 8px; }
+  /* Map legend (eye menu > Legend): top-left, away from the side bar */
+  #map-legend {
+    position: absolute; top: calc(12px + var(--sat, 0px)); left: calc(12px + var(--sal, 0px)); z-index: 10;
+    max-width: min(220px, 48vw); padding: 7px 10px 8px; border-radius: 8px;
+    background: var(--panel-bg); border: 1px solid var(--panel-border); box-shadow: 0 1px 6px rgba(0,0,0,0.18);
+    font-size: 11px; color: var(--text); pointer-events: none;
+  }
+  :root[data-bar="left"] #map-legend { left: auto; right: calc(12px + var(--sar, 0px)); }
+  #map-legend .lg-title { font-weight: 700; font-size: 11.5px; margin-bottom: 5px; }
+  #map-legend .lg-bar { width: 150px; max-width: 100%; height: 9px; border-radius: 2px; }
+  #map-legend .lg-ends { display: flex; justify-content: space-between; gap: 10px; margin-top: 3px; color: var(--text-dim); }
+  #map-legend .lg-row { display: flex; align-items: center; gap: 6px; line-height: 1.55; }
+  #map-legend i { flex: none; width: 11px; height: 11px; border-radius: 3px; box-shadow: 0 0 0 1px rgba(0,0,0,0.2); }
   /* soil themes and legend (under the tiles while Soil shows) */
   #soil-opts { margin: 4px 2px 2px; }
   .chips { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -709,7 +722,6 @@
   #brand { padding: 0; font-family: inherit; }
   #brand svg { display: block; }
   /* pictures: the logo sits under the caption, top-left */
-  body.shooting #brand { position: fixed; top: 52px; left: 16px; z-index: 30; }
   #info-card .subtitle { font-size: 14px; font-weight: 700; color: var(--text); overflow-wrap: anywhere; }
   .info-actions { display: flex; gap: 8px; margin-top: 10px; }
   .info-actions .btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; }
@@ -757,7 +769,7 @@
   /* eye menu: compact rows so it fits without scrolling */
   #settings-card .opt-label { margin-top: 6px; }
   .tilt-row { display: flex; gap: 8px; }
-  .tilt-row #btn-tilt, .tilt-row #btn-rotlock { flex: 1 1 0; width: 0; min-width: 0; margin: 0; padding-left: 8px; padding-right: 8px; display: flex; align-items: center; justify-content: center; font-weight: 600; white-space: nowrap; }
+  .tilt-row #btn-tilt, .tilt-row #btn-rotlock, .tilt-row #btn-legend { flex: 1 1 0; width: 0; min-width: 0; margin: 0; padding-left: 8px; padding-right: 8px; display: flex; align-items: center; justify-content: center; font-weight: 600; white-space: nowrap; }
   #btn-rotlock.active { background: var(--accent); border-color: var(--accent); color: #fff; }
   #btn-rotlock:not(.active) .shackle { transform: translate(1.6px, -0.8px) rotate(20deg); transform-origin: 13.8px 11.6px; }   /* open */
   #btn-compass svg { display: block; }
@@ -946,7 +958,7 @@
     #start-main .big-btn { flex: 1 1 0; padding: 13px 10px; font-size: 15px; }
     #start-main .reopen-btn { flex: 1 1 100%; padding: 10px 14px; }
     #dl-panel .seg { margin-bottom: 8px; }
-    #dl-panel .seg button { padding: 8px 2px; }
+    #dl-panel .seg button, .fetch-group button { padding: 8px 2px; }
     #dl-estimate { margin-bottom: 8px; }
     .dl-actions .big-btn, .dl-actions .reopen-btn { padding-top: 11px; padding-bottom: 11px; }
     .start-links { margin-top: 10px; }
@@ -1068,6 +1080,18 @@
       <div class="seg" id="dl-res">
         <button data-v="1">1 m</button><button data-v="2">2 m</button><button data-v="5">5 m</button>
       </div>
+      <!-- Layers that come down with the elevation: main | sub (Open file uses the same choice) -->
+      <div class="dl-label">Layers</div>
+      <div id="fetch-row" title="Layers downloaded with the elevation">
+        <div class="fetch-group">
+          <button data-layer="imagery" title="Satellite imagery">Satellite</button>
+          <button data-layer="soil" title="Soil themes">Soil</button>
+        </div>
+        <div class="fetch-group sub">
+          <button data-layer="roads" title="Roads">Roads</button>
+          <button data-layer="section" title="Section grid">Sections</button>
+        </div>
+      </div>
       <div id="dl-estimate"></div>
       <div class="dl-actions">
         <button id="dl-back" class="reopen-btn">Back</button>
@@ -1077,19 +1101,6 @@
     <!-- No accept filter: in the home-screen app iOS applies it strictly, and Google Drive
          (and some other places in Files) do not label GeoTIFFs as TIFF images, so they
          were refused as "not supported". parseTiff checks the file and explains if it is not a .tif. -->
-    <!-- Layers downloaded with the elevation when a map opens: main | sub -->
-    <div id="fetch-row" title="Layers downloaded with the elevation">
-      <svg class="fetch-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 12.5l9 5 9-5M3 17l9 5 9-5"/></svg>
-      <div class="fetch-group">
-        <button data-layer="imagery" title="Satellite imagery">Satellite</button>
-        <button data-layer="soil" title="Soil themes">Soil</button>
-      </div>
-      <div class="fetch-group sub">
-        <button data-layer="roads" title="Roads">Roads</button>
-        <button data-layer="township" title="Township grid">Townships</button>
-        <button data-layer="section" title="Section grid">Sections</button>
-      </div>
-    </div>
     <input type="file" id="file-input" multiple hidden>
     <div id="load-progress" hidden>
       <div id="load-label">Reading&hellip;</div>
@@ -1136,6 +1147,7 @@
     <canvas id="gl"></canvas>
     <svg id="overlay"><g id="overlay-g"></g></svg>
     <div id="map-labels"></div>
+    <div id="map-legend" hidden></div>
     <div id="loc-dot" hidden><div class="loc-acc"></div><svg class="loc-cone" viewBox="-100 -100 200 200" hidden aria-hidden="true"><path class="cone-edge" d="M0 0L-37.5-92.7A100 100 0 0 1 37.5-92.7Z"/><path class="cone-fill" d="M0 0L-37.5-92.7A100 100 0 0 1 37.5-92.7Z"/></svg></div>
   </div>
 
@@ -1289,7 +1301,8 @@
     </button>
     <button id="rail-show" class="corner-btn" title="Show the tool bar" aria-label="Show the tool bar" hidden>
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+        <rect x="1.5" y="4" width="12.5" height="12.5" rx="3"/><circle cx="7.75" cy="10.25" r="2.6"/>
+        <path d="M14 12.5h8v4h-8M16.7 12.5v1.6M19.4 12.5v1.6M22 16.5v3"/>
       </svg>
     </button>
   </div>
@@ -1320,8 +1333,6 @@
     <div class="sub-layers">
       <button class="sub-layer" data-layer="roads" title="Roads, field approaches and trails (NRCan CanVec)">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21L9.5 3M20 21L14.5 3M12 5v2.5M12 11v2.5M12 17v3"/></svg>Roads</button>
-      <button class="sub-layer" data-layer="township" title="Township grid and labels (Saskatchewan, SKSIS)">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M12 3v18M3 12h18"/></svg>Townships</button>
       <button class="sub-layer" data-layer="section" title="Section grid and numbers (Saskatchewan, SKSIS)">
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>Sections</button>
     </div>
@@ -1352,6 +1363,10 @@
           <option value="custom">Custom&hellip;</option>
         </select>
         <input type="number" id="contour-custom" min="0.05" step="0.05" placeholder="m" hidden>
+      </div>
+      <div class="tilt-row legend-row">
+        <button class="btn" id="btn-legend" title="Legend on the map: the elevation colours, or the soil classes">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="4" height="4" rx="1"/><rect x="3.5" y="10" width="4" height="4" rx="1"/><rect x="3.5" y="15.5" width="4" height="4" rx="1"/><path d="M10.5 6.5h10M10.5 12h10M10.5 17.5h7"/></svg>Legend</button>
       </div>
     </div>
 
@@ -3431,8 +3446,8 @@ uniform vec3 u_roadColor;
 uniform vec3 u_roadCasing;
 uniform sampler2D u_soil;   // SKSIS soil theme (colours, clear where unmapped)
 uniform float u_soilAlpha;  // 0 = off
-uniform sampler2D u_grid;   // land grid mask: r = section line / label, g = its halo, b = township, a = its halo
-uniform vec2 u_gridOn;      // x = sections, y = townships (0 = off)
+uniform sampler2D u_grid;   // section grid mask: r = lines and numbers, g = their halo
+uniform float u_gridOn;     // 0 = off
 in vec2 v_p;
 out vec4 o;
 
@@ -3520,11 +3535,10 @@ void main() {
     a *= smoothstep(2.5 * u_dpr, 6.0 * u_dpr, spacingPx);
     rgb = mix(rgb, u_ccolor, a * u_calpha);
   }
-  if (u_gridOn.x + u_gridOn.y > 0.0) {   // section / township lines and labels: white halo, then the line
-    vec4 g = texture(u_grid, uvMap) * vec4(u_gridOn.xx, u_gridOn.yy);
-    rgb = mix(rgb, vec3(1.0), max(g.g, g.a) * 0.75);
+  if (u_gridOn > 0.0) {   // section lines and numbers: white halo, then the line
+    vec2 g = texture(u_grid, uvMap).rg;
+    rgb = mix(rgb, vec3(1.0), g.g * 0.75);
     rgb = mix(rgb, vec3(0.13, 0.25, 0.62), clamp(g.r * 1.5, 0.0, 1.0));
-    rgb = mix(rgb, vec3(0.62, 0.08, 0.36), clamp(g.b * 1.5, 0.0, 1.0));
   }
   if (u_roadOn > 0.0) {   // roads on top: a contrasting outline, then the road
     // x2.5: thin lines averaged away when zoomed out stay visible, and edges
@@ -3899,6 +3913,7 @@ function teardownMap() {
   setWater(null);
   setSlope(null);
   map = null;
+  updateLegend();
   if (analysis) { analysis.terminate(); analysis = null; }
   pending.forEach((p) => p.reject(new Error('cancelled')));
   pending.clear();
@@ -3953,16 +3968,16 @@ function useTerrainProgram(P, U, L, dpr, mPerDev) {
   gl.uniform1f(U.u_roadOn, road ? 1 : 0);
   // soil theme and land grid (units 6 and 7)
   const soil = settings.soil && layerTex.soil && layerTex.soil.theme === settings.soilTheme && layerTex.soil;
-  const grid = layerTex.grid, gridOn = [settings.section && grid && grid.has.section ? 1 : 0, settings.township && grid && grid.has.township ? 1 : 0];
+  const grid = settings.section && layerTex.grid;
   gl.uniform1i(U.u_soil, 6);
   gl.uniform1i(U.u_grid, 7);
   gl.activeTexture(gl.TEXTURE6);
   gl.bindTexture(gl.TEXTURE_2D, soil ? soil.tex : blankTex);
   gl.activeTexture(gl.TEXTURE7);
-  gl.bindTexture(gl.TEXTURE_2D, gridOn[0] || gridOn[1] ? grid.tex : blankTex);
+  gl.bindTexture(gl.TEXTURE_2D, grid ? grid.tex : blankTex);
   gl.activeTexture(gl.TEXTURE0);
   gl.uniform1f(U.u_soilAlpha, soil ? settings.soilAlpha : 0);
-  gl.uniform2f(U.u_gridOn, gridOn[0], gridOn[1]);
+  gl.uniform1f(U.u_gridOn, grid ? 1 : 0);
   const [rc, rk] = roadColors();
   gl.uniform3fv(U.u_roadColor, rc);
   gl.uniform3fv(U.u_roadCasing, rk);
@@ -4264,6 +4279,7 @@ function render() {
   gl.clearColor(bg, bg, bg, 1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.disable(gl.DEPTH_TEST);
+  updateLegend();
   if (!levels || !map) return;
   gl.bindVertexArray(vao);
   if (settings.tilt3d) { render3D(cw, ch, dpr); return; }
@@ -4848,7 +4864,6 @@ const settings = {
   colormap: DEFAULT_COLORMAP,
   units: 'metric',   // or 'imperial' (eye menu > Units)
   roads: false,      // roads sub layer (layers menu)
-  township: false,   // township grid sub layer
   section: false,    // section grid sub layer
   imagery: false,    // aerial imagery main layer
   imageryAlpha: 1,   // imagery strength over the hillshade / colours
@@ -4856,7 +4871,7 @@ const settings = {
   soilTheme: 'soil_zone_sld',
   soilAlpha: 0.85,
   // downloaded with the elevation when a map opens (start screen)
-  fetch: { imagery: true, soil: false, roads: true, township: false, section: false },
+  fetch: { imagery: true, soil: false, roads: true, section: false },
 };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('terrainLayers') || '{}')); } catch (e) { /* storage may be blocked */ }
 try { Object.assign(settings.fetch, JSON.parse(localStorage.getItem('terrainFetch') || '{}')); } catch (e) { /* storage may be blocked */ }
@@ -4879,7 +4894,7 @@ function applyView() {
 }
 
 // Shown on the start screen and in File information. Keep in step with CACHE in sw.js.
-const APP_VERSION = 50;
+const APP_VERSION = 52;
 $('start-version').textContent = 'Version ' + APP_VERSION;
 
 const POINT_R = window.matchMedia('(pointer: coarse)').matches ? 10 : 6;   // tool point size, screen px
@@ -5577,11 +5592,11 @@ $('btn-autoscale').addEventListener('click', () => {
 
 // ---- Map layers (layers menu) ----
 // Main layers, one at a time: the LiDAR as hillshade or colours, satellite, or
-// a soil theme. Sub layers, any of them, on top: roads, townships, sections.
+// a soil theme. Sub layers, any of them, on top: roads, sections.
 // One picture per layer for the open map's whole area, kept as a texture and
 // drawn by the terrain shader. Roads: NRCan CanVec map service (free, Open
 // Government Licence). Imagery: Saskatchewan Geospatial Imagery Collaborative
-// (SGIC) mosaic, ~0.4 m. Soil (1:100 000 survey) and the township / section
+// (SGIC) mosaic, ~0.4 m. Soil (1:100 000 survey) and the section
 // grid: SKSIS, University of Saskatchewan. All but roads: Saskatchewan only.
 const ROADS_WMS = 'https://maps.geogratis.gc.ca/wms/canvec_en';
 const SGIC_IMAGERY = 'https://gis.saskatchewan.ca/imagery/rest/services/SGIC_Public_Orthophotos/ImageServer/exportImage';
@@ -5591,7 +5606,7 @@ const SKSIS_WFS = 'https://geosis.sksis.ca/geoserver/dss/ows';
 const SOIL_THEMES = [
   { id: 'soil_zone_sld', name: 'Zone', title: 'Soil zone',
     legend: [['8B776B', 'Brown'], ['6F5F4C', 'Dark Brown'], ['525251', 'Black'], ['413A34', 'Thick Black'], ['656260', 'Dark Grey'], ['CBCCCD', 'Grey'], ['B2DF8A', 'Organic']] },
-  { id: 'dom_ag_cap_sld', name: 'Ag class', title: 'Ag capability',
+  { id: 'dom_ag_cap_sld', name: 'Ag class', title: 'Ag capability class',
     legend: [['A0522D', '1'], ['B8860B', '2'], ['EAA221', '3'], ['F8DE7E', '4'], ['C9DC89', '5'], ['BDDA57', '6'], ['E68FAC', '7'], ['BCD4E6', 'O']] },
   { id: 'dominant_texture_style', name: 'Texture', title: 'Texture',
     legend: [['FFFACD', 'Coarse'], ['F7C273', 'Mod. coarse'], ['87CEEB', 'Medium'], ['FF8C00', 'Mod. fine'], ['DB7093', 'Fine'], ['DED560', 'Organic']] },
@@ -5602,11 +5617,11 @@ const SOIL_THEMES = [
   { id: 'initilal_irrig_pooled', name: 'Irrigation', title: 'Irrigation potential',
     legend: [['238B45', 'Excellent'], ['78C679', 'Good'], ['FFFFCC', 'Fair'], ['FE9929', 'Poor']] },
 ];
-const LAYER_KINDS = ['imagery', 'soil', 'roads', 'township', 'section'];   // what can be downloaded
-const LAYER_NAMES = { imagery: 'satellite', soil: 'soil', roads: 'roads', township: 'townships', section: 'sections' };
-const LAYER_ATTRIB = { roads: 'Roads: CanVec, NRCan', imagery: 'Imagery: SGIC', sksis: 'Soil, land grid: SKSIS' };
-const layerJobs = { imagery: null, soil: null, roads: null, township: null, section: null };   // fetches in progress (for the open map)
-const isGrid = (kind) => kind === 'township' || kind === 'section' || kind === 'grid';
+const LAYER_KINDS = ['imagery', 'soil', 'roads', 'section'];   // what can be downloaded
+const LAYER_NAMES = { imagery: 'satellite', soil: 'soil', roads: 'roads', section: 'sections' };
+const LAYER_ATTRIB = { roads: 'Roads: CanVec, NRCan', imagery: 'Imagery: SGIC', sksis: 'Soil, sections: SKSIS' };
+const layerJobs = { imagery: null, soil: null, roads: null, section: null };   // fetches in progress (for the open map)
+const isGrid = (kind) => kind === 'section' || kind === 'grid';
 
 // Wanted metres per layer pixel: roads ~1 m (crisp when zoomed in); imagery the
 // same as the LiDAR pixels (1, 2 or 5 m; the photo itself is ~0.4 m); soil 5 m
@@ -5626,7 +5641,6 @@ function layerBytes(kind, sideM, lidarPx) {
   const { w, h } = layerSize(kind, sideM, sideM, lidarPx);
   if (kind === 'soil') return SOIL_THEMES.length * (5000 + w * h * 0.04);
   if (kind === 'section') return 4000 + sideM * sideM * 2.5e-4;
-  if (kind === 'township') return 4000 + sideM * sideM * 5e-5;
   return kind === 'roads' ? 30000 + w * h * 0.014 : w * h * 0.15;
 }
 // Saskatchewan's layers only cover Saskatchewan (a box is close enough)
@@ -5680,9 +5694,8 @@ function layerUrl(kind, f, theme) {
       + `&crs=EPSG:${f.crs}&bbox=${bbox}&width=${f.rw}&height=${f.rh}&format=image/png&transparent=true`;
   }
   if (isGrid(kind)) {
-    const props = kind === 'section' ? 'geom,sect,ptwp,prge,pmer' : 'geom,twp,rge,mer';
     return `${SKSIS_WFS}?service=WFS&version=2.0.0&request=GetFeature&typeNames=dss:${kind}&outputFormat=application/json`
-      + `&srsName=EPSG:${f.crs}&propertyName=${props}&bbox=${bbox},urn:ogc:def:crs:EPSG::${f.crs}`;
+      + `&srsName=EPSG:${f.crs}&propertyName=geom,sect,ptwp,prge,pmer&bbox=${bbox},urn:ogc:def:crs:EPSG::${f.crs}`;
   }
   return `${SGIC_IMAGERY}?bbox=${bbox}&bboxSR=${f.crs}&imageSR=${f.crs}&size=${f.rw},${f.rh}&format=jpg&f=image`;
 }
@@ -5778,66 +5791,61 @@ async function showSoil() {
   if (settings.soilTheme !== t) showSoil();   // switched again while this one was drawing
 }
 
-// Township and section grid: the outlines (WFS), drawn here with their labels
-// into one mask: r / g = section lines and labels / their halo, b / a = the same
-// for townships. Labels are sized in metres, like the land.
-const gridData = { key: null, section: null, township: null };
+// Section grid: the outlines (WFS), drawn here with their numbers into a
+// mask: r = lines and numbers, g = their halo. Numbers are sized in metres,
+// like the land.
+const gridData = { key: null, section: null };
 async function fetchGrid(kind) {
   const f = layerFrame('grid');
   const fc = await (await layerFetch(layerUrl(kind, f), 'json')).json();
-  if (gridData.key !== f.key) { gridData.key = f.key; gridData.section = gridData.township = null; }
-  gridData[kind] = fc.features || [];
+  gridData.key = f.key;
+  gridData.section = fc.features || [];
   drawGrid();
 }
 function drawGrid() {
   if (!gl || !map) return;
   const f = layerFrame('grid');
-  if (gridData.key !== f.key) return;
+  if (gridData.key !== f.key || !gridData.section) return;
   const { w, h, box: b, toTex: T } = f, res = map.W * map.px / w;
   const sx = f.rw / (b.x1 - b.x0), sy = f.rh / (b.y1 - b.y0);
   const tex = (x, y) => { const u = (x - b.x0) * sx, v = (b.y1 - y) * sy; return [T[0] * u + T[2] * v + T[4], T[1] * u + T[3] * v + T[5]]; };
   const cv = document.createElement('canvas');
   cv.width = w; cv.height = h;
   const ctx = cv.getContext('2d', { willReadFrequently: true });
-  const out = new Uint8Array(w * h * 4);
-  for (const [kind, ch] of [['section', 0], ['township', 2]]) {
-    const feats = gridData[kind];
-    if (!feats) continue;
-    const big = kind === 'township';
-    const lineW = Math.max(1.2, (big ? 5 : 2.5) / res), fontPx = Math.max(9, (big ? 150 : 100) / res);
-    const labels = feats.map((ft) => {
-      const p = ft.properties || {}, polys = ft.geometry ? (ft.geometry.type === 'Polygon' ? [ft.geometry.coordinates] : ft.geometry.coordinates) : [];
-      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-      for (const [x, y] of (polys[0] || [[]])[0] || []) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
-      return { polys, at: tex((x0 + x1) / 2, (y0 + y1) / 2), text: big ? `T${+p.twp} R${+p.rge} W${p.mer}` : String(+p.sect) };
-    });
-    for (const halo of [0, 1]) {
-      ctx.clearRect(0, 0, w, h);
-      ctx.beginPath();
-      for (const l of labels) {
-        for (const poly of l.polys) {
-          for (const ring of poly) {
-            ring.forEach(([x, y], i) => { const [u, v] = tex(x, y); if (i) ctx.lineTo(u, v); else ctx.moveTo(u, v); });
-            ctx.closePath();
-          }
+  const out = new Uint8Array(w * h * 2);
+  const lineW = Math.max(1.2, 2.5 / res), fontPx = Math.max(9, 100 / res);
+  const labels = gridData.section.map((ft) => {
+    const p = ft.properties || {}, polys = ft.geometry ? (ft.geometry.type === 'Polygon' ? [ft.geometry.coordinates] : ft.geometry.coordinates) : [];
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const [x, y] of (polys[0] || [[]])[0] || []) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    return { polys, at: tex((x0 + x1) / 2, (y0 + y1) / 2), text: String(+p.sect) };
+  });
+  for (const halo of [0, 1]) {
+    ctx.clearRect(0, 0, w, h);
+    ctx.beginPath();
+    for (const l of labels) {
+      for (const poly of l.polys) {
+        for (const ring of poly) {
+          ring.forEach(([x, y], i) => { const [u, v] = tex(x, y); if (i) ctx.lineTo(u, v); else ctx.moveTo(u, v); });
+          ctx.closePath();
         }
       }
-      ctx.lineJoin = 'round';
-      ctx.lineWidth = lineW + (halo ? 3 : 0);
-      ctx.stroke();
-      ctx.font = `700 ${fontPx}px system-ui, -apple-system, sans-serif`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.lineWidth = Math.max(3, fontPx * 0.25);
-      for (const l of labels) {
-        if (halo) ctx.strokeText(l.text, l.at[0], l.at[1]);
-        ctx.fillText(l.text, l.at[0], l.at[1]);
-      }
-      const a = ctx.getImageData(0, 0, w, h).data;
-      for (let i = 0, n = w * h; i < n; i++) out[i * 4 + ch + halo] = a[i * 4 + 3];
     }
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = lineW + (halo ? 3 : 0);
+    ctx.stroke();
+    ctx.font = `700 ${fontPx}px system-ui, -apple-system, sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = Math.max(3, fontPx * 0.25);
+    for (const l of labels) {
+      if (halo) ctx.strokeText(l.text, l.at[0], l.at[1]);
+      ctx.fillText(l.text, l.at[0], l.at[1]);
+    }
+    const a = ctx.getImageData(0, 0, w, h).data;
+    for (let i = 0, n = w * h; i < n; i++) out[i * 2 + halo] = a[i * 4 + 3];
   }
   cv.width = 1;
-  if (uploadLayer('grid', f, { data: out }, { has: { section: !!gridData.section, township: !!gridData.township } })) requestRender();
+  if (uploadLayer('grid', f, { data: out, rg: true })) requestRender();
 }
 
 // Fetch what is on show and not loaded yet for the open map; with prefetch
@@ -5890,12 +5898,12 @@ function dropLayers() {
   }
   soilPics.key = gridData.key = null;
   soilPics.blobs = {};
-  gridData.section = gridData.township = null;
+  gridData.section = null;
   updateLayerUI();
 }
 function layerAttribution() {
   const on = (k) => settings[k] && layerTex[k];
-  const sksis = (settings.soil && layerTex.soil) || ((settings.section || settings.township) && layerTex.grid);
+  const sksis = (settings.soil && layerTex.soil) || (settings.section && layerTex.grid);
   return [on('imagery') && LAYER_ATTRIB.imagery, sksis && LAYER_ATTRIB.sksis, on('roads') && LAYER_ATTRIB.roads].filter(Boolean).join(' · ');
 }
 const mainLayer = () => (settings.imagery ? 'imagery' : settings.soil ? 'soil' : settings.view);
@@ -5920,7 +5928,7 @@ function updateLayerUI() {
   $('relief-opts').hidden = settings.view !== 'elevation';
 }
 function saveLayers() {
-  const keep = ['roads', 'imagery', 'imageryAlpha', 'soil', 'soilTheme', 'soilAlpha', 'township', 'section'];
+  const keep = ['roads', 'imagery', 'imageryAlpha', 'soil', 'soilTheme', 'soilAlpha', 'section'];
   try { localStorage.setItem('terrainLayers', JSON.stringify(Object.fromEntries(keep.map((k) => [k, settings[k]])))); } catch (e) { /* storage may be blocked */ }
 }
 // Map layers menu: main layers swap (Hillshade / Elevation show the LiDAR on
@@ -5963,7 +5971,72 @@ $('soil-alpha').addEventListener('input', (e) => {
   requestRender();
 });
 
-// Start screen: which layers come down with the elevation when a map opens
+// ---- Map legend (eye menu > Legend; on unless turned off) ----
+// Follows the main layer: the colour scale for Elevation, or the classes of
+// the soil theme found on this map. Nothing to show for Hillshade / Satellite.
+settings.legend = true;
+try { settings.legend = localStorage.getItem('terrainLegend') !== '0'; } catch (e) { /* storage may be blocked */ }
+$('btn-legend').classList.toggle('active', settings.legend);
+$('btn-legend').addEventListener('click', () => {
+  settings.legend = !settings.legend;
+  $('btn-legend').classList.toggle('active', settings.legend);
+  try { localStorage.setItem('terrainLegend', settings.legend ? '1' : '0'); } catch (e) { /* storage may be blocked */ }
+  updateLegend();
+});
+let legendSig = '';
+const soilPresent = { key: '', busy: '', classes: null };   // soil classes found on the open map, per theme
+function updateLegend() {
+  const main = map ? mainLayer() : '';
+  const soil = main === 'soil' && layerTex.soil && layerTex.soil.key === mapKey() && layerTex.soil.theme === settings.soilTheme;
+  const show = settings.legend && (main === 'elevation' || soil);
+  const sig = show ? [main, settings.soilTheme, settings.rangeMin, settings.rangeMax, settings.colormap, settings.units, soilPresent.key].join('|') : '';
+  if (sig === legendSig) return;
+  legendSig = sig;
+  const el = $('map-legend');
+  el.hidden = !show;
+  if (!show) return;
+  if (main === 'elevation') {
+    const lut = getLut(settings.colormap), stops = [];
+    for (let i = 0; i <= 10; i++) { const p = Math.round(i / 10 * 255) * 3; stops.push(`rgb(${lut[p]},${lut[p + 1]},${lut[p + 2]})`); }
+    el.innerHTML = `<div class="lg-title">Elevation</div><div class="lg-bar" style="background:linear-gradient(90deg, ${stops.join(', ')})"></div>`
+      + `<div class="lg-ends"><span>${fmtElev(settings.rangeMin, 1)}</span><span>${fmtElev(settings.rangeMax, 1)}</span></div>`;
+  } else {
+    const t = soilTheme(), present = soilPresentClasses();
+    el.innerHTML = `<div class="lg-title">${escapeHtml(t.title)}</div>` + t.legend.filter(([c]) => !present || present.has(c))
+      .map(([c, n]) => `<div class="lg-row"><i style="background:#${c}"></i>${escapeHtml(n)}</div>`).join('');
+  }
+}
+// The soil theme's classes on this map (legend colours), read once from its
+// picture; null until known (the whole legend shows meanwhile)
+function soilPresentClasses() {
+  const k = `${mapKey()}|${settings.soilTheme}`, t = soilTheme();
+  if (soilPresent.key === k) return soilPresent.classes;
+  const blob = soilPics.key === mapKey() && soilPics.blobs[t.id];
+  if (blob && soilPresent.busy !== k) {
+    soilPresent.busy = k;
+    createImageBitmap(blob).then((bmp) => {
+      const N = 256, cv = document.createElement('canvas');
+      cv.width = cv.height = N;
+      const ctx = cv.getContext('2d', { willReadFrequently: true });
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(bmp, 0, 0, N, N);
+      bmp.close && bmp.close();
+      const d = ctx.getImageData(0, 0, N, N).data, found = new Set();
+      const cols = t.legend.map(([hex]) => [hex, parseInt(hex, 16)]);
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i + 3] < 200) continue;
+        for (const [hex, n] of cols) {
+          if (Math.abs(d[i] - (n >> 16)) + Math.abs(d[i + 1] - ((n >> 8) & 255)) + Math.abs(d[i + 2] - (n & 255)) < 12) { found.add(hex); break; }
+        }
+      }
+      Object.assign(soilPresent, { key: k, classes: found.size ? found : null });
+      requestRender();
+    }).catch(() => { soilPresent.busy = ''; });
+  }
+  return null;
+}
+
+// Download area: which layers come down with the elevation when a map opens
 // (in the field, the elevation alone saves data and waiting). Kept on the device.
 function updateFetchUI() {
   document.querySelectorAll('#fetch-row button').forEach((b) => b.classList.toggle('active', !!settings.fetch[b.dataset.layer]));
@@ -6484,9 +6557,11 @@ function renderToolResults() {
 // text keep their shape on any screen; fallback size when not laid out yet.
 function chartSize(svg, fallbackH) {
   const W = Math.round(svg.clientWidth) || 300, H = Math.round(svg.clientHeight) || fallbackH;
+  chartDrawnSize = svg.clientWidth + 'x' + svg.clientHeight;   // what it was drawn for ("0x0" while the card is hidden)
   return { W, H };
 }
-// Redraw when the chart's size changes (card shown, phone turned).
+// Redraw when the chart's size differs from what it was drawn at (card shown
+// after drawing hidden at the fallback size, panel closed, phone turned).
 let chartDrawnSize = '';
 new ResizeObserver(() => {
   const svg = $('profile-chart'), key = svg.clientWidth + 'x' + svg.clientHeight;
@@ -7474,79 +7549,102 @@ function paintPanel(ctx, x, y, w, h) {
   ctx.stroke();
 }
 
-function paintDecorations(ctx, W, H) {
+// Picture extras: a see-through title across the top, and along the bottom one
+// row of matching panels, right to left: scale bar, colour legend, north arrow,
+// file name (with date and data credits). Panels that don't fit the width go
+// in a row above, so a phone picture stacks them. Returns the top of the
+// bottom panels (with draw false it only measures, so cards can move clear).
+function paintDecorations(ctx, W, H, draw = true) {
   const font = getComputedStyle(document.body).fontFamily;
+  const PH = 50, GAP = 8, M = 16;   // panel height, gap between panels, margin
   ctx.textBaseline = 'middle';
 
-  // Caption: file name + date (top-left)
+  // file name, then date and data credits under it
   const now = new Date();
-  const caption = `${$('file-subtitle').textContent}  ·  ${now.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}`;
-  ctx.font = `600 12px ${font}`;
-  const cw = ctx.measureText(caption).width + 20;
-  paintPanel(ctx, 16, 16, cw, 28);
-  ctx.fillStyle = '#2a2620';
-  ctx.textAlign = 'left';
-  ctx.fillText(caption, 26, 30);
+  const name = $('file-subtitle').textContent || 'Map';
+  const sub = [now.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }), layerAttribution()].filter(Boolean).join('  ·  ');
+  const fit = (text, f, maxW) => {   // shortened with … to fit
+    ctx.font = f;
+    if (ctx.measureText(text).width <= maxW) return text;
+    while (text.length > 1 && ctx.measureText(text + '…').width > maxW) text = text.slice(0, -1);
+    return text + '…';
+  };
+  const maxTextW = W - 2 * M - 20;
+  const nameF = `600 12px ${font}`, subF = `11px ${font}`;
+  const nameT = fit(name, nameF, maxTextW), subT = fit(sub, subF, maxTextW);
+  ctx.font = nameF; let fileW = ctx.measureText(nameT).width;
+  ctx.font = subF; fileW = Math.max(fileW, ctx.measureText(subT).width) + 20;
 
-  // North arrow (top-right), turned with the map
-  const nx = W - 36, ny = 40;
-  ctx.beginPath(); ctx.arc(nx, ny, 20, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(255,255,255,0.95)'; ctx.fill();
-  ctx.strokeStyle = '#d7d2c8'; ctx.lineWidth = 1; ctx.stroke();
-  ctx.save();
-  ctx.translate(nx, ny); ctx.rotate(view.rot - view.north);
-  ctx.beginPath(); ctx.moveTo(0, -14); ctx.lineTo(7, 4); ctx.lineTo(0, 0); ctx.closePath();
-  ctx.fillStyle = '#2a2620'; ctx.fill();
-  ctx.beginPath(); ctx.moveTo(0, -14); ctx.lineTo(-7, 4); ctx.lineTo(0, 0); ctx.closePath();
-  ctx.fillStyle = '#9a9488'; ctx.fill();
-  ctx.font = `700 10px ${font}`; ctx.fillStyle = '#2a2620'; ctx.textAlign = 'center';
-  ctx.fillText('N', 0, 12);
-  ctx.restore();
-
-  // Scale bar (bottom-right)
-  const label = $('scale-label').textContent;
   const barW = parseFloat($('scale-bar-inner').style.height) || 80;   // drawn across in pictures
-  // (left out of 3D pictures: distances vary across a tilted view)
-  const tilted = settings.tilt3d;
-  const sbW = tilted ? 0 : Math.max(barW, 40) + 24, sbH = 50;   // same height as the colour legend beside it
-  const sbX = W - 16 - sbW, sbY = H - 16 - sbH;
-  if (!tilted) {
-    paintPanel(ctx, sbX, sbY, sbW, sbH);
+  const items = [];
+  // (scale left out of 3D pictures: distances vary across a tilted view)
+  if (!settings.tilt3d) items.push({ w: Math.max(barW, 40) + 24, paint: (x, y, w) => {
     ctx.font = `11px ${font}`; ctx.fillStyle = '#6b6357'; ctx.textAlign = 'center';
-    ctx.fillText(label, sbX + sbW / 2, sbY + 18);
-    canvasRoundRect(ctx, sbX + (sbW - barW) / 2, sbY + 30, barW, 4, 2);
+    ctx.fillText($('scale-label').textContent, x + w / 2, y + 18);
+    canvasRoundRect(ctx, x + (w - barW) / 2, y + 30, barW, 4, 2);
     ctx.fillStyle = '#2a2620'; ctx.fill();
-  }
-
-  // Data credits for roads / imagery (bottom-left)
-  const credit = layerAttribution();
-  if (credit) {
-    ctx.font = `10px ${font}`;
-    const crW = ctx.measureText(credit).width + 12;
-    paintPanel(ctx, 16, H - 16 - 18, crW, 18);
-    ctx.fillStyle = '#6b6357'; ctx.textAlign = 'left';
-    ctx.fillText(credit, 22, H - 16 - 9);
-  }
-
-  // Elevation colour legend (left of the scale bar, bottoms aligned; Elevation view only)
-  if (settings.view === 'elevation') {
+  } });
+  // (the elevation colours, unless the map legend shows them already)
+  if (mainLayer() === 'elevation' && $('map-legend').hidden) items.push({ w: 200, paint: (x, y, w) => {
     const lut = getLut(settings.colormap);
-    const lgW = 200, lgH = 50, lgX = sbX - 8 - lgW, lgY = sbY + sbH - lgH;
-    paintPanel(ctx, lgX, lgY, lgW, lgH);
     ctx.font = `600 11px ${font}`; ctx.fillStyle = '#2a2620'; ctx.textAlign = 'left';
-    ctx.fillText('Elevation', lgX + 10, lgY + 12);
-    const g = ctx.createLinearGradient(lgX + 10, 0, lgX + lgW - 10, 0);
+    ctx.fillText('Elevation', x + 10, y + 12);
+    const g = ctx.createLinearGradient(x + 10, 0, x + w - 10, 0);
     for (let i = 0; i <= 10; i++) {
       const p = Math.round(i / 10 * 255) * 3;
       g.addColorStop(i / 10, `rgb(${lut[p]},${lut[p + 1]},${lut[p + 2]})`);
     }
-    canvasRoundRect(ctx, lgX + 10, lgY + 21, lgW - 20, 9, 2);
+    canvasRoundRect(ctx, x + 10, y + 21, w - 20, 9, 2);
     ctx.fillStyle = g; ctx.fill();
     ctx.font = `11px ${font}`; ctx.fillStyle = '#6b6357';
-    ctx.fillText(fmtElev(settings.rangeMin, 1), lgX + 10, lgY + 40);
+    ctx.fillText(fmtElev(settings.rangeMin, 1), x + 10, y + 40);
     ctx.textAlign = 'right';
-    ctx.fillText(fmtElev(settings.rangeMax, 1), lgX + lgW - 10, lgY + 40);
+    ctx.fillText(fmtElev(settings.rangeMax, 1), x + w - 10, y + 40);
+  } });
+  items.push({ w: PH, paint: (x, y) => {   // north arrow, turned with the map
+    ctx.save();
+    ctx.translate(x + PH / 2, y + PH / 2 + 1); ctx.rotate(view.rot - view.north);
+    ctx.beginPath(); ctx.moveTo(0, -17); ctx.lineTo(7, 3); ctx.lineTo(0, -1); ctx.closePath();
+    ctx.fillStyle = '#2a2620'; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(0, -17); ctx.lineTo(-7, 3); ctx.lineTo(0, -1); ctx.closePath();
+    ctx.fillStyle = '#9a9488'; ctx.fill();
+    ctx.font = `700 11px ${font}`; ctx.fillStyle = '#2a2620'; ctx.textAlign = 'center';
+    ctx.fillText('N', 0, 12);
+    ctx.restore();
+  } });
+  items.push({ w: fileW, paint: (x, y) => {
+    ctx.textAlign = 'left';
+    ctx.font = nameF; ctx.fillStyle = '#2a2620'; ctx.fillText(nameT, x + 10, y + 17);
+    ctx.font = subF; ctx.fillStyle = '#6b6357'; ctx.fillText(subT, x + 10, y + 34);
+  } });
+
+  // lay the panels out right to left, bottom row first
+  let x = W - M, y = H - M - PH;
+  for (const it of items) {
+    if (x - it.w < M && x < W - M) { x = W - M; y -= PH + GAP; }
+    it.x = x - it.w; it.y = y;
+    x -= it.w + GAP;
   }
+  if (!draw) return y;
+  for (const it of items) {
+    paintPanel(ctx, it.x, it.y, it.w, PH);
+    it.paint(it.x, it.y, it.w);
+  }
+
+  // Title across the top: see-through, so the map shows under it
+  const title = 'BOHN AG CONSULTING';
+  ctx.save();
+  ctx.font = `800 13px ${font}`;
+  const spaced = 'letterSpacing' in ctx;
+  if (spaced) ctx.letterSpacing = '2px';
+  const tw = ctx.measureText(title).width + 32, tx = (W - tw) / 2;
+  canvasRoundRect(ctx, tx, M, tw, 30, 8);
+  ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = '#2e6b34'; ctx.textAlign = 'center';
+  ctx.fillText(title, W / 2 + (spaced ? 1 : 0), M + 15.5);   // (spacing adds a gap after the last letter too)
+  ctx.restore();
+  return y;
 }
 
 async function takeScreenshot() {
@@ -7568,10 +7666,16 @@ async function takeScreenshot() {
   paintOverlay(ctx);
   paintLocDot(ctx);
   for (const el of $('map-labels').children) await paintDom(ctx, el, vr.left, vr.top);
-  if (!$('result-card').hidden) await paintDom(ctx, $('result-card'), vr.left, vr.top);
-  document.body.classList.add('shooting');   // the logo moves under the caption for the picture
-  await paintDom(ctx, $('brand'), vr.left, vr.top);
-  document.body.classList.remove('shooting');
+  await paintDom(ctx, $('map-legend'), vr.left, vr.top);   // (skipped when hidden)
+  const panelsTop = paintDecorations(ctx, W, H, false);
+  if (!$('result-card').hidden) {
+    // the card moves up clear of the bottom panels (they sit where the tool bar is)
+    const r = $('result-card').getBoundingClientRect();
+    const lift = Math.max(0, r.bottom - vr.top - (panelsTop - 8));
+    document.body.classList.add('shooting');   // (no show / hide arrow in the picture)
+    await paintDom(ctx, $('result-card'), vr.left, vr.top + lift);
+    document.body.classList.remove('shooting');
+  }
   paintDecorations(ctx, W, H);
 
   const blob = await new Promise((res) => out.toBlob(res, 'image/png'));
@@ -7688,7 +7792,7 @@ function inRing(X, Y, ring) {
   return inside;
 }
 const outerRings = (g) => (!g ? [] : g.type === 'Polygon' ? [g.coordinates[0]] : g.coordinates.map((poly) => poly[0]));
-const landLabel = (q, p) => `${q} ${+p.sect}-${+(p.ptwp || p.twp)}-${+(p.prge || p.rge)} W${p.pmer || p.mer}`;
+const landLabel = (q, p) => `${q} ${+p.sect}-${+p.ptwp}-${+p.prge} W${p.pmer}`;
 const titleCase = (s) => String(s).toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
 
 async function lookupLand(p) {
@@ -8176,7 +8280,6 @@ function onMapShown(data, ms) {
   settings.roads = geo && settings.fetch.roads;
   settings.imagery = sk && settings.fetch.imagery;
   settings.soil = sk && settings.fetch.soil && !settings.imagery;
-  settings.township = sk && settings.fetch.township;
   settings.section = sk && settings.fetch.section;
   return refreshLayers(true);   // settles when the ticked layers have loaded (or failed)
 }
@@ -8679,6 +8782,29 @@ function writeTrueNorthTiff(out, sq, citation) {
   return new Blob([head, out], { type: 'image/tiff' });   // Float32Array bytes: little-endian on every phone and PC
 }
 
+// Share of a Lambert box (EPSG:3979) the HRDEM mosaic covers, from a small
+// coverage picture (0 = none). NaN when it can't tell (the download then just goes ahead).
+async function lidarCoverage(x0, y0, x1, y1, signal) {
+  const N = 64;
+  try {
+    const resp = await fetch(`${HRDEM_WCS}?service=WMS&version=1.3.0&request=GetMap&layers=${dlChoice.type}&styles=&crs=EPSG:3979`
+      + `&bbox=${x0},${y0},${x1},${y1}&width=${N}&height=${N}&format=image/png&transparent=true`, { signal });
+    if (!resp.ok || !/image/.test(resp.headers.get('content-type') || '')) return NaN;
+    const bmp = await createImageBitmap(await resp.blob());
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = N;
+    const ctx = cv.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(bmp, 0, 0, N, N);
+    const a = ctx.getImageData(0, 0, N, N).data;
+    let n = 0;
+    for (let i = 3; i < a.length; i += 4) if (a[i] > 0) n++;
+    return n / (N * N);
+  } catch (err) {
+    if (err.name === 'AbortError') throw err;
+    return NaN;
+  }
+}
+
 function currentPosition() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) { reject(new UserError("This device can't share its location.")); return; }
@@ -8735,6 +8861,14 @@ $('dl-go').addEventListener('click', async () => {
     const url = `${HRDEM_WCS}?service=WCS&version=1.1.1&request=GetCoverage&identifier=${dlChoice.type}&format=image/geotiff`
       + `&BoundingBox=${x0 + h},${y0 + h},${x1 - h},${y1 - h},${crs}`
       + `&GridBaseCRS=${crs}&GridOffsets=${res},-${res}`;
+
+    // Is there LiDAR here at all? A quick look at the coverage map first, so an
+    // empty square says so straight away instead of after the whole download.
+    showLoadProgress('Checking for LiDAR here…', 0);
+    if (await lidarCoverage(x0, y0, x1, y1, signal) === 0) {
+      throw new UserError(picked ? "There's no LiDAR elevation data in this square yet. Try somewhere in the yellow shading."
+        : "There's no LiDAR elevation data for your location yet.");
+    }
 
     showLoadProgress('Waiting for the elevation server…', 0);
     const tReq = performance.now();
